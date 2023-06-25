@@ -11,9 +11,12 @@ public class Fiber<N>
     // tree structure
 
     public N Content { get; }
+
     public Fiber<N>? Sibling { get; set; }
     public Fiber<N>? Child { get; set; }
     public Fiber<N>? Return { get; set; }
+
+    public Fiber<N>? Alternate { get; set; }
 
     public string? Key { get; set; }
 

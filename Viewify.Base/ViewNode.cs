@@ -3,9 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using Viewify.Base;
 
-namespace Viewify.Core.Tree;
+namespace Viewify.Base;
 
 public class ViewNode
 {
