@@ -21,6 +21,8 @@ public class ViewNode
     public NodeState State { get; set; } = NodeState.InProgress;
 
     public LinkedList<object> Hooks { get; } = new();
+    public LinkedList<IState> States { get; } = new();
+    public View? View { get; set; }
 
     public void MarkNeedVisit()
     {

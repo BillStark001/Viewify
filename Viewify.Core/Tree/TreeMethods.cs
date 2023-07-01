@@ -53,7 +53,7 @@ public static class TreeMethods
         }
         else if (node.Record is ClassViewRecord recClass)
         {
-            var children = recClass.View.Render(recClass.Children ?? Enumerable.Empty<ViewRecord>());
+            var children = recClass.View().Render(recClass.Children ?? Enumerable.Empty<ViewRecord>());
             ConnectChildren(current, children);
         }
         else if (node.Record is FuncViewRecord recFunc)

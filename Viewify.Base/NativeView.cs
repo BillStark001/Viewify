@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Viewify.Base.Views;
+namespace Viewify.Base;
 
 public class NativeView : View
 {

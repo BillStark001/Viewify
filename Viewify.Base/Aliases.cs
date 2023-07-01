@@ -17,8 +17,7 @@ public static class Aliases
         => new FuncViewRecord(view, children.Length == 0 ? null : children);
 
 
-    public static ViewRecord R<V>(V view, params ViewRecord[] children)
-        where V : View
+    public static ViewRecord R(Func<View> view, params ViewRecord[] children)
     {
         return new ClassViewRecord(view, children.Length == 0 ? null : children);
     }

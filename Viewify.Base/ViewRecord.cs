@@ -38,10 +38,10 @@ public class EmptyViewRecord : ViewRecord
 
 public class ClassViewRecord : ViewRecord
 {
-    public View View { get; }
+    public Func<View> View { get; }
 
 
-    public ClassViewRecord(View view, IEnumerable<ViewRecord>? children = null, string? key = null) : base(children, key)
+    public ClassViewRecord(Func<View> view, IEnumerable<ViewRecord>? children = null, string? key = null) : base(children, key)
     {
         View = view;
     }
@@ -78,14 +78,13 @@ public class ViewBuilder
     }
 
 
-    public ViewBuilder V(FuncView view)
+    public ViewBuilder V(FuncView view, bool condition = true)
     {
         _records.Add(new FuncViewRecord(view));
         return this;
     }
 
-    public ViewBuilder V<V>(V view)
-    where V : View
+    public ViewBuilder V(Func<View> view, bool condition = true)
     {
         _records.Add(new ClassViewRecord(view));
         return this;

@@ -6,7 +6,23 @@ using System.Threading.Tasks;
 using Viewify.Base;
 
 namespace Viewify.Core.Hooks;
-
-internal class StateHandler: HookHandler<IState>
+public class StateRecord
 {
+    public int Index { get; set; }
+}
+
+internal class StateHandler : HookHandler<StateRecord, IState>
+{
+    public override StateRecord Make(ViewNode node, int index)
+    {
+        return new()
+        {
+            Index = index
+        };
+    }
+
+    public override IState Use(ViewNode node, StateRecord hook, Action markUpdate)
+    {
+        throw new NotImplementedException();
+    }
 }
