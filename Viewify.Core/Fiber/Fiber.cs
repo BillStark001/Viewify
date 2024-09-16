@@ -6,8 +6,19 @@ using System.Threading.Tasks;
 
 namespace Viewify.Base;
 
+public enum FiberTag : int
+{
+    Create,
+    Update,
+    Remove,
+    Insert,
+}
+
 public class Fiber<N>
 {
+
+
+
     // tree structure
 
     public N Content { get; }
@@ -18,12 +29,14 @@ public class Fiber<N>
 
     public Fiber<N>? Alternate { get; set; }
 
-    public string? Key { get; set; }
+    public FiberTag? Tag { get; set; } 
+
+    public object? Key { get; set; }
 
     public static N operator ~(Fiber<N> f) => f.Content;
 
 
-    public Fiber(N content, string? key = default)
+    public Fiber(N content, object? key = default)
     {
         Content = content;
         Key = key;

@@ -6,10 +6,22 @@ using System.Threading.Tasks;
 
 namespace Viewify.Base;
 
-public class NativeView : View
+public abstract class NativeView : View
 {
-    public override IEnumerable<ViewRecord> Render(IEnumerable<ViewRecord> children)
+    public sealed override View? Render()
     {
-        throw new InvalidOperationException("The `Render()` function of a native view should never be called.");
+        throw new InvalidOperationException();
     }
+
+    public abstract void WillMount();
+
+    public abstract void DidMount();
+
+    public abstract void WillUpdate();
+
+    public abstract void DidUpdate();
+
+    public abstract void WillUnmount();
+
+    public abstract void DidUnmount();
 }

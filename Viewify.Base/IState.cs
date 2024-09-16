@@ -33,12 +33,12 @@ public interface IState<V> : IState
 
 }
 
-[AttributeUsage(AttributeTargets.Field)]
-public class DefaultValueAttribute : Attribute
+[AttributeUsage(AttributeTargets.Field | AttributeTargets.Property)]
+public class DefaultStateAttribute : Attribute
 {
     public object? Value { get; init; }
 
-    public DefaultValueAttribute(object? value)
+    public DefaultStateAttribute(object? value)
     {
         Value = value;
     }
@@ -49,24 +49,17 @@ public interface IDefaultValueFactory
     public object? Create();
 }
 
-[AttributeUsage(AttributeTargets.Field)]
-public class DefaultValueFactoryAttribute : Attribute
+[AttributeUsage(AttributeTargets.Field | AttributeTargets.Property)]
+public class DefaultStateFactoryAttribute : Attribute
 {
     public IDefaultValueFactory Factory { get; init; }
 
-    public DefaultValueFactoryAttribute(Type type)
+    public DefaultStateFactoryAttribute(Type type)
     {
         var factory = Activator.CreateInstance(type) as IDefaultValueFactory;
         if (factory == null)
             throw new InvalidOperationException("Failed to construct the factory.");
         Factory = factory;
     }
-
-    public object? Value => Factory.Create();
-}
-
-[AttributeUsage(AttributeTargets.Field)]
-public class StateIgnoreAttribute: Attribute
-{
 
 }

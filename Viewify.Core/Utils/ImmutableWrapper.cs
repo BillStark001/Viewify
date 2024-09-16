@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Viewify.Base;
+namespace Viewify.Core.Utils;
 
 public struct ImmutableWrapper<T> where T : class
 {

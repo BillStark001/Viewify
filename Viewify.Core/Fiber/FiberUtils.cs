@@ -46,8 +46,8 @@ public static class FiberUtils
     {
         T? defaultValue = default;
 
-        var defaultValueAttributes = field.GetCustomAttributes<DefaultValueAttribute>();
-        var defaultValueFactoryAttributes = field.GetCustomAttributes<DefaultValueFactoryAttribute>();
+        var defaultValueAttributes = field.GetCustomAttributes<DefaultStateAttribute>();
+        var defaultValueFactoryAttributes = field.GetCustomAttributes<DefaultStateFactoryAttribute>();
 
         if (defaultValueAttributes.Count() > 0)
         {
@@ -56,7 +56,7 @@ public static class FiberUtils
         }
         else if (defaultValueFactoryAttributes.Count() > 0)
         {
-            var lastValue = defaultValueFactoryAttributes.Last().Value;
+            var lastValue = defaultValueFactoryAttributes.Last().Factory.Create();
             defaultValue = lastValue is T lastValueT ? lastValueT : default;
         }
 

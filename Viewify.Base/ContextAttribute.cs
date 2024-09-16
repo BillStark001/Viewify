@@ -6,6 +6,8 @@ using System.Threading.Tasks;
 
 namespace Viewify.Base;
 
-public interface IContext
+[AttributeUsage(AttributeTargets.Field | AttributeTargets.Property)]
+public class ContextAttribute : Attribute
 {
+
 }

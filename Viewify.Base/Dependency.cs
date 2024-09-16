@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 
 namespace Viewify.Base;
 
-public class NativeOperation
+public abstract class Dependency
 {
+    public abstract void Derive();
 }

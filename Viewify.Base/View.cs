@@ -8,52 +8,50 @@ namespace Viewify.Base;
 
 
 
-public interface IView
+public abstract class View
 {
-
-}
-
-public abstract class View : IView
-{
+    // needed to be overloaded
+    public abstract View? Render();
 
 
+    // properties
 
-    public abstract IEnumerable<ViewRecord> Render(IEnumerable<ViewRecord> children);
+    [Prop]
+    public object? Key { get; private set; }
+    public object? Reference { get; private set; }
 
-    // mounting
-
-    /// <summary>
-    /// onmounted
-    /// </summary>
-    public virtual void AfterMount() { }
-
-
-    // updating
-
-    public virtual void PropsChanged(object prevObj) { }
-
-    /// <summary>
-    /// return false to skip render
-    /// </summary>
-    public virtual bool ShouldUpdate() => true;
+    [Prop]
+    public IList<View> Children { get; private set; } = new List<View>().AsReadOnly();
 
 
+    public View SetKey(object key)
+    {
+        Key = key;
+        return this;
+    }
 
-    public virtual void HandlePrevState(object prevObj) { }
+    public View SetReference(object reference)
+    {
+        Reference = reference;
+        return this;
+    }
 
-    /// <summary>
-    /// onupdated
-    /// </summary>
-    public virtual void AfterUpdate() { }
+    public View SetChildren(params View[] children)
+    {
+        var lst = children.ToList();
+        Children = lst.AsReadOnly();
+        return this;
+    }
 
-    // unmounting
+    public static View Case(bool cond, View? v1, View? v2)
+    {
+        return new ConditionView(cond, v1, v2);
+    }
 
-    /// <summary>
-    /// onunmount
-    /// </summary>
-    public virtual void BeforeUnmount() { }
+    public static View Loop(params View[] children)
+    {
+        return new Fragment(true).SetChildren(children);
+    }
 
-
-    // utils
-
+    
 }

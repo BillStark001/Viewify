@@ -6,12 +6,8 @@ using System.Threading.Tasks;
 
 namespace Viewify.Base;
 
-public enum ViewEffect
+[AttributeUsage(AttributeTargets.Property | AttributeTargets.Field)]
+public class PropAttribute : Attribute
 {
-    None = 0,
-    Performed = 1 << 0,
 
-    Create = 1 << 1,
-    Update = 1 << 2,
-    Delete = 1 << 3,
 }

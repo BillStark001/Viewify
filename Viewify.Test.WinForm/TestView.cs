@@ -15,23 +15,27 @@ internal class TestFactory : IDefaultValueFactory
     public object? Create() => 114514 | 1919810;
 }
 
+internal class TestSubView : View
+{
+    public override View? Render()
+    {
+        return null;
+    }
+}
+
 internal class TestView : View
 {
 
-    public static IEnumerable<ViewRecord> TestFuncView(IViewifyInstance v, string dispData)
-    {
-        yield break;
-    }
 
-    public int TestValue { get; set; }
+    [Prop] public int TestValue { get; set; }
 
-    [DefaultValueFactory(typeof(TestFactory))]
+    [DefaultStateFactory(typeof(TestFactory))]
     IState<int> IntState = null!;
 
     public TestView(int testValue)
     {
         TestValue = testValue;
-        
+
     }
 
     void IncrementState()
@@ -39,15 +43,12 @@ internal class TestView : View
         IntState %= (~IntState) + 1;
     }
 
-    public override IEnumerable<ViewRecord> Render(IEnumerable<ViewRecord> children)
+    public override View? Render()
     {
         var intValue = ~IntState;
-        return new ViewBuilder()
-            .V((v, c) => TestFuncView(v, ""))
-            .V(() => new TestView(114514))
-            .C(b => b
-                .V((v, c) => Enumerable.Empty<ViewRecord>())
-            )
-            .Build();
+        return new Fragment().SetChildren(
+                new TestSubView(),
+                new TestSubView()
+                );
     }
 }
