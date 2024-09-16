@@ -16,5 +16,10 @@ public class ViewRecordCache
 
     private readonly AdaptiveLRUCache<Type, ViewRecord> _cache = new(32, GenerateCache);
 
+
+    public ViewRecord Get(Type t)
+    {
+        return _cache.Get(t);
+    }
     
 }

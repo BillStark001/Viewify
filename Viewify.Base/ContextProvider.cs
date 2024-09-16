@@ -6,13 +6,14 @@ using System.Threading.Tasks;
 
 namespace Viewify.Base;
 
-public sealed class Fragment : View
+public class ContextProvider<T> : View
 {
-    [Prop] public bool UseKey { get; private set; }
 
-    public Fragment(bool useKey = false)
+    [Prop] public T Value { get; private set; }
+
+    public ContextProvider(T value)
     {
-        UseKey = useKey;
+        Value = value;
     }
 
     public override View? Render()

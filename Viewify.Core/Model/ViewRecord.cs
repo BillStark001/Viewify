@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 using System.Reflection;
 using System.Text;
@@ -15,14 +16,22 @@ public class ViewRecord
     public IList<FieldInfo> PropFields { get; }
     public IList<PropertyInfo> PropProperties { get; }
 
-    public IList<(FieldInfo, object?, IDefaultValueFactory?)> StateFields { get; }
-    public IList<(PropertyInfo, object?, IDefaultValueFactory?)> StateProperties { get; }
+    public IList<(FieldInfo, Type, object?, IDefaultValueFactory?, MethodInfo?, MethodInfo?)> StateFields { get; }
+    public IList<(PropertyInfo, Type, object?, IDefaultValueFactory?, MethodInfo?, MethodInfo?)> StateProperties { get; }
 
     public IList<FieldInfo> ContextFields { get; }
     public IList<PropertyInfo> ContextProperties { get; }
 
 
-    public IList<(MethodInfo, string[]?, bool, bool)> EffectMethods { get; }
+    public IList<MethodInfo> MountEffects { get; }
+    public IList<MethodInfo> UnmountEffects { get; }
+    public IDictionary<string, IList<MethodInfo>> Effects { get; }
+
+    public IList<(FieldInfo, MethodInfo?)> EffectDepFields { get; }
+    public IList<(PropertyInfo, MethodInfo?)> EffectDepProperties { get; }
+
+    const string STATE_GET = nameof(IState<int>.Get);
+    const string STATE_SET = nameof(IState<int>.Set);
 
 
     public ViewRecord(Type viewType)
@@ -38,9 +47,9 @@ public class ViewRecord
 
         var pProps = new List<PropertyInfo>();
 
-        var fStates = new List<(FieldInfo, object?, IDefaultValueFactory?)>();
+        var fStates = new List<(FieldInfo, Type, object?, IDefaultValueFactory?, MethodInfo?, MethodInfo?)>();
 
-        var pStates = new List<(PropertyInfo, object?, IDefaultValueFactory?)>();
+        var pStates = new List<(PropertyInfo, Type, object?, IDefaultValueFactory?, MethodInfo?, MethodInfo?)>();
 
         var fContexts = new List<FieldInfo>();
 
@@ -94,7 +103,12 @@ public class ViewRecord
             }
             else if (stateFlag0)
             {
-                fStates.Add((f, stateFlag1?.Value, stateFlag2?.Factory));
+                var genericArgument = f.FieldType.GetInterfaces()
+                    .First(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IState<>))
+                    .GetGenericArguments()[0];
+                fStates.Add((f, genericArgument, stateFlag1?.Value, stateFlag2?.Factory,
+                    f.FieldType.GetMethod(STATE_GET),
+                    f.FieldType.GetMethod(STATE_SET)));
             }
             else if (contextFlag != null)
             {
@@ -121,7 +135,12 @@ public class ViewRecord
             }
             else if (stateFlag0)
             {
-                pStates.Add((p, stateFlag1?.Value, stateFlag2?.Factory));
+                var genericArgument = p.PropertyType.GetInterfaces()
+                    .First(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IState<>))
+                    .GetGenericArguments()[0];
+                pStates.Add((p, genericArgument, stateFlag1?.Value, stateFlag2?.Factory,
+                    p.PropertyType.GetMethod(STATE_GET),
+                    p.PropertyType.GetMethod(STATE_SET)));
             }
             else if (contextFlag != null)
             {
@@ -138,7 +157,9 @@ public class ViewRecord
 
         // effects
 
-        var mEffects = new List<(MethodInfo, string[]?, bool, bool)>();
+        var mountEffects = new List<MethodInfo>();
+        var unmountEffects = new List<MethodInfo>();
+        var effects = new Dictionary<string, List<MethodInfo>>();
 
         foreach (var p in ViewType.GetMethods())
         {
@@ -153,17 +174,63 @@ public class ViewRecord
             bool mountFlag = p.GetCustomAttribute<MountEffectAttribute>() != null;
             bool unmountFlag = p.GetCustomAttribute<UnmountEffectAttribute>() != null;
 
-            if (!mountFlag && normalFlag && deps.Count == 0)
+            if (!mountFlag && normalFlag)
             {
                 mountFlag = true;
             }
-            if (deps.Count > 0 || mountFlag || unmountFlag)
+
+            // records
+            if (mountFlag)
             {
-                mEffects.Add((p, deps.ToArray(), mountFlag, unmountFlag));
+                mountEffects.Add(p);
+            }
+            if (unmountFlag)
+            {
+                unmountEffects.Add(p);
+            }
+            foreach (var dep in deps)
+            {
+                var hasKey = effects.TryGetValue(dep, out var lst);
+                if (!hasKey)
+                {
+                    lst = new();
+                    effects.Add(dep, lst);
+                }
+                lst!.Add(p);
             }
         }
 
-        EffectMethods = mEffects.AsReadOnly();
-    }
+        MountEffects = mountEffects.AsReadOnly();
+        UnmountEffects = unmountEffects.AsReadOnly();
+        var effects2 = new Dictionary<string, IList<MethodInfo>>();
+        foreach (var (k, v) in effects)
+        {
+            effects2[k] = v.AsReadOnly();
+        }
+        Effects = effects2.ToImmutableDictionary();
+
+
+        // effect dependencies
+        List<(FieldInfo, MethodInfo?)> effectDepFields = new();
+        List<(PropertyInfo, MethodInfo?)> effectDepProperties = new();
+
+        foreach (var k in Effects.Keys)
+        {
+            var f = viewType.GetField(k);
+            var p = viewType.GetProperty(k);
+
+            if (f != null)
+            {
+                effectDepFields.Add((f, f.FieldType.IsAssignableTo(typeof(IState)) ? f.FieldType.GetMethod(STATE_GET) : null));
+            }
+            else if (p != null)
+            {
+                effectDepProperties.Add((p, p.PropertyType.IsAssignableTo(typeof(IState)) ? p.PropertyType.GetMethod(STATE_GET) : null));
+            }
+        }
+
+        EffectDepFields = effectDepFields.AsReadOnly();
+        EffectDepProperties = effectDepProperties.AsReadOnly();
+}
 
 }

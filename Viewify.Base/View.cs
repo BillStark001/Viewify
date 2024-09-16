@@ -16,12 +16,10 @@ public abstract class View
 
     // properties
 
-    [Prop]
-    public object? Key { get; private set; }
+    [Prop] public object? Key { get; private set; }
     public object? Reference { get; private set; }
 
-    [Prop]
-    public IList<View> Children { get; private set; } = new List<View>().AsReadOnly();
+    [Prop] public IList<View> Children { get; private set; } = new List<View>().AsReadOnly();
 
 
     public View SetKey(object key)

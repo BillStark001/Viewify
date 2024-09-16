@@ -29,8 +29,9 @@ internal class TestView : View
 
     [Prop] public int TestValue { get; set; }
 
-    [DefaultStateFactory(typeof(TestFactory))]
-    IState<int> IntState = null!;
+    [DefaultStateFactory(typeof(TestFactory))] IState<int> IntState = null!;
+
+    [DefaultState(1234)] IState<int> WeirdState = null!;
 
     public TestView(int testValue)
     {
@@ -43,6 +44,12 @@ internal class TestView : View
         IntState %= (~IntState) + 1;
     }
 
+    [Effect(nameof(IntState))]
+    void ChangeState()
+    {
+        WeirdState %= (~IntState);
+    }
+
     public override View? Render()
     {
         var intValue = ~IntState;
@@ -50,5 +57,6 @@ internal class TestView : View
                 new TestSubView(),
                 new TestSubView()
                 );
+
     }
 }
