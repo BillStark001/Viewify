@@ -8,4 +8,5 @@ namespace Viewify.Base;
 
 public interface IViewifyInstance
 {
+
 }

@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace Viewify.Base;
 
-public class Fragment : View
+public sealed class Fragment : View
 {
     [Prop]
     public bool UseKey { get; init; }
