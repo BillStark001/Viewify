@@ -67,8 +67,6 @@ public class ViewNode
             default:
                 break;
         }
-
-        newFiber.Detach();
     }
 
     public void UpdateContext(View? newView, Fiber<ViewNode>? parentFiber)

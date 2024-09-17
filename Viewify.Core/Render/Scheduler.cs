@@ -30,6 +30,10 @@ public sealed class Scheduler
     {
         _root = CreateFiber(rootNode);
         Handler = handler;
+
+        // render initial view
+        _renderRoot = _root;
+        CreateWipRoot();
     }
 
     private Fiber<ViewNode> CreateFiber(View? view)
