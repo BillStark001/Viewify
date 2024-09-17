@@ -6,11 +6,9 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Xml.Linq;
 using Viewify.Base;
-using Viewify.Core.Fiber;
-using Viewify.Core.Model;
 using Viewify.Core.Utils;
 
-namespace Viewify.Core;
+namespace Viewify.Core.Render;
 
 
 

@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 using Viewify.Base;
 using Viewify.Core.Utils;
 
-namespace Viewify.Core.Model;
+namespace Viewify.Core.Render;
 
 public class ViewRecord
 {

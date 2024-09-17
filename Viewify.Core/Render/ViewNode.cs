@@ -4,10 +4,9 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Viewify.Base;
-using Viewify.Core.Fiber;
 using Viewify.Core.Utils;
 
-namespace Viewify.Core.Model;
+namespace Viewify.Core.Render;
 
 public class ViewNode
 {

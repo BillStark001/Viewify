@@ -5,7 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Viewify.Core.Utils;
 
-namespace Viewify.Core.Model;
+namespace Viewify.Core.Render;
 
 public class ViewRecordCache
 {
@@ -21,5 +21,5 @@ public class ViewRecordCache
     {
         return _cache.Get(t);
     }
-    
+
 }

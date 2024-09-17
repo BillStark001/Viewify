@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Viewify.Core.Fiber;
+namespace Viewify.Core.Render;
 
 public enum FiberTag : int
 {

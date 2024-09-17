@@ -5,7 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Viewify.Base;
 
-namespace Viewify.Core.Fiber;
+namespace Viewify.Core.Render;
 
 public abstract class StateWithDispatch : IState
 {
@@ -14,7 +14,7 @@ public abstract class StateWithDispatch : IState
     public abstract object? GetValue();
 }
 
-public class StateWithDispatch<T>: StateWithDispatch, IState<T>
+public class StateWithDispatch<T> : StateWithDispatch, IState<T>
 {
 
     private T _value;
