@@ -13,15 +13,11 @@ public abstract class NativeView : View
         throw new InvalidOperationException();
     }
 
-    public abstract void WillMount();
+    public abstract void Mount();
 
-    public abstract void DidMount();
+    public abstract void Update();
 
-    public abstract void WillUpdate();
+    public abstract void Unmount();
 
-    public abstract void DidUpdate();
-
-    public abstract void WillUnmount();
-
-    public abstract void DidUnmount();
+    public abstract void Move();
 }

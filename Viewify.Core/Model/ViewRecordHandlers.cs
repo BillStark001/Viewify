@@ -5,6 +5,7 @@ using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 using Viewify.Base;
+using Viewify.Core.Utils;
 
 namespace Viewify.Core.Model;
 
@@ -192,6 +193,25 @@ public static class ViewRecordHandlers
     }
 
     // context
+    public static void InitializeContext(this ViewRecord record, View? view, ImmutableTreeHashTable<object> context)
+    {
+        foreach (var (field, key) in record.ContextFields)
+        {
+            var val = context.Get(key);
+            if (val != null && field.FieldType.IsAssignableFrom(val.GetType()))
+            {
+                field.SetValue(view, val);
+            }
+        }
+        foreach (var (property, key) in record.ContextProperties)
+        {
+            var val = context.Get(key);
+            if (val != null && property.PropertyType.IsAssignableFrom(val.GetType()))
+            {
+                property.SetValue(view, val);
+            }
+        }
+    }
     // TODO
 
     // custom hooks

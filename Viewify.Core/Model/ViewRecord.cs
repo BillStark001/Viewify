@@ -6,6 +6,7 @@ using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 using Viewify.Base;
+using Viewify.Core.Utils;
 
 namespace Viewify.Core.Model;
 
@@ -19,8 +20,8 @@ public class ViewRecord
     public IList<(FieldInfo, Type, object?, IDefaultValueFactory?, MethodInfo?, MethodInfo?)> StateFields { get; }
     public IList<(PropertyInfo, Type, object?, IDefaultValueFactory?, MethodInfo?, MethodInfo?)> StateProperties { get; }
 
-    public IList<FieldInfo> ContextFields { get; }
-    public IList<PropertyInfo> ContextProperties { get; }
+    public IList<(FieldInfo, string)> ContextFields { get; }
+    public IList<(PropertyInfo, string)> ContextProperties { get; }
 
 
     public IList<MethodInfo> MountEffects { get; }
@@ -51,9 +52,9 @@ public class ViewRecord
 
         var pStates = new List<(PropertyInfo, Type, object?, IDefaultValueFactory?, MethodInfo?, MethodInfo?)>();
 
-        var fContexts = new List<FieldInfo>();
+        var fContexts = new List<(FieldInfo, string)>();
 
-        var pContexts = new List<PropertyInfo>();
+        var pContexts = new List<(PropertyInfo, string)>();
 
 
         PropAttribute? propFlag;
@@ -112,7 +113,7 @@ public class ViewRecord
             }
             else if (contextFlag != null)
             {
-                fContexts.Add(f);
+                fContexts.Add((f, f.FieldType.GetUniqueName()));
             }
         }
 
@@ -144,7 +145,7 @@ public class ViewRecord
             }
             else if (contextFlag != null)
             {
-                pContexts.Add(p);
+                pContexts.Add((p, p.PropertyType.GetUniqueName()));
             }
         }
 
@@ -164,7 +165,7 @@ public class ViewRecord
         foreach (var p in ViewType.GetMethods())
         {
             var effectAttrs = p.GetCustomAttributes<EffectAttribute>();
-            List<string> deps = new();
+            List<string> deps = [];
             bool normalFlag = false;
             foreach (var a in effectAttrs)
             {
@@ -193,7 +194,7 @@ public class ViewRecord
                 var hasKey = effects.TryGetValue(dep, out var lst);
                 if (!hasKey)
                 {
-                    lst = new();
+                    lst = [];
                     effects.Add(dep, lst);
                 }
                 lst!.Add(p);
@@ -211,8 +212,8 @@ public class ViewRecord
 
 
         // effect dependencies
-        List<(FieldInfo, MethodInfo?)> effectDepFields = new();
-        List<(PropertyInfo, MethodInfo?)> effectDepProperties = new();
+        List<(FieldInfo, MethodInfo?)> effectDepFields = [];
+        List<(PropertyInfo, MethodInfo?)> effectDepProperties = [];
 
         foreach (var k in Effects.Keys)
         {
@@ -231,6 +232,6 @@ public class ViewRecord
 
         EffectDepFields = effectDepFields.AsReadOnly();
         EffectDepProperties = effectDepProperties.AsReadOnly();
-}
+    }
 
 }

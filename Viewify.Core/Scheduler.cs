@@ -6,6 +6,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Xml.Linq;
 using Viewify.Base;
+using Viewify.Core.Fiber;
 using Viewify.Core.Model;
 using Viewify.Core.Utils;
 
@@ -19,7 +20,7 @@ public sealed class Scheduler
 {
 
     private readonly ConcurrentQueue<(Fiber<ViewNode>, Func<View?>)> _dispatchQueue = new();
-    private readonly Dictionary<object, Fiber<ViewNode>> _dict = new();
+    private readonly Dictionary<object, Fiber<ViewNode>> _dict = [];
     private readonly ViewRecordCache _recordCache = new();
 
     private Fiber<ViewNode> _root;
@@ -111,87 +112,136 @@ public sealed class Scheduler
 
     public void ReconcileChildren(Fiber<ViewNode> v, IEnumerable<View> children, bool useKey = false)
     {
+        // old fiber node
+
+        var oldFiber = v.Alternate?.Child;
         if (useKey)
         {
             // create key records
+            // oldFiber turns into the first fiber without key
             _dict.Clear();
-            var c = v.Alternate?.Child;
-            while (c != null)
+            var currentFiber = oldFiber;
+            var oldFiberSet = false;
+            while (currentFiber != null)
             {
-                if (c.Key != null)
+                if (currentFiber.Key != null)
                 {
-                    _dict[c.Key] = c;
+                    _dict[currentFiber.Key] = currentFiber;
                 }
+                else if (!oldFiberSet)
+                {
+                    oldFiber = currentFiber;
+                    oldFiberSet = true;
+                }
+                currentFiber = currentFiber.Sibling;
+            }
+            if (!oldFiberSet)
+            {
+                oldFiber = null;
             }
         }
+
+        // new views to create fiber nodes
+        // note: null is a valid view type, 
+        // so check the exhaustion of children by _hasNext
         var _children = children.GetEnumerator();
         var _hasNext = _children.MoveNext();
-        var oldFiber = v.Alternate?.Child;
         var newView = _hasNext ? _children.Current : null;
-        var newFiber = v;
-        var prevNewFiber = v;
+
+        Fiber<ViewNode> prevNewFiber = v;
+
         var initial = true;
 
-
-        do
+        while (oldFiber != null || _hasNext)
         {
-            var sameType = oldFiber != null && newView != null
-                && oldFiber.Content?.GetType() == newView?.GetType();
-            var sameKey = useKey && newView?.Key != null && oldFiber?.Key == newView?.Key;
-            var keyExists = useKey && newView?.Key != null && _dict.ContainsKey(newView.Key);
 
-            if (sameType)
+            var newKey = newView?.Key;
+            Fiber<ViewNode>? _f = null;
+            var useKeyAndHasNewKey = useKey && newKey != null;
+            var withKeyedOldView = useKeyAndHasNewKey && _dict.TryGetValue(newKey!, out _f);
+            var logicalOldFiber = useKeyAndHasNewKey ? _f : oldFiber;
+
+            // note: if the new view has a key and key is used,
+            // logicalOldFiber is either the one with exact key match or null,
+            // otherwise it is just the "physical" old fiber.
+
+            var logicalOldView = logicalOldFiber?.Content.View;
+            var viewHasSameType = logicalOldView?.GetType() == newView?.GetType();
+
+            // used in arrayed fragments
+
+            Fiber<ViewNode>? newFiber = null;
+
+            if (viewHasSameType)
             {
-                if (!sameKey && keyExists)
-                {
-                    oldFiber!.Tag = FiberTag.Insert;
-                    // TODO record oldFiber to insert
-                }
-                else if (!sameKey && !keyExists)
-                {
-                    // TODO warn the user the requirement of unique key props
-                }
-                newFiber = CreateFiber(newView); 
-                newFiber.Return = v;
-                newFiber.Alternate = oldFiber;
+                newFiber = CreateFiber(newView);
+                newFiber.Parent = v;
+                newFiber.Alternate = logicalOldFiber;
                 newFiber.Tag = FiberTag.Update;
+                if (withKeyedOldView)
+                {
+                    logicalOldFiber!.Tag = FiberTag.Insert;
+                    newFiber.AddOperativeFiber(logicalOldFiber);
+                }
+                if (useKey && newKey == null)
+                {
+                    // TODO
+                    // warn the user to add a key prop
+                }
             }
             else
             {
-                // 1. remove
-                if (oldFiber != null)
-                {
-                    oldFiber.Tag = FiberTag.Remove;
-                    // TODO record oldFiber to delete
-                }
-                // 2.add
-                if (newView != null)
+                // remove if exists & add
+                if (_hasNext)
                 {
                     newFiber = CreateFiber(newView);
-                    newFiber.Return = v;
+                    newFiber.Parent = v;
                     newFiber.Tag = FiberTag.Create;
+                    if (useKey)
+                    {
+                        newFiber.Key = newKey;
+                    }
+                }
+                if (logicalOldFiber != null)
+                {
+                    logicalOldFiber.Tag = FiberTag.Remove;
+                    (newFiber ?? prevNewFiber).AddOperativeFiber(logicalOldFiber);
                 }
             }
 
 
-            // commit change
-
+            // commit change and chain all fibers together
             if (initial)
             {
                 v.Child = newFiber;
+                initial = false;
             }
             else
             {
                 prevNewFiber.Sibling = newFiber;
             }
 
+            // replace prevNewFiber
+            if (newFiber != null)
+            {
+                // prevNewFiber is still needed in null cases
+                // since it is useful to record operative fibers
+                prevNewFiber = newFiber;
+            }
+
             // move the cursor
-            initial = false;
-            prevNewFiber = newFiber;
+            // oldFiber
             oldFiber = oldFiber?.Sibling;
+            while (useKey && oldFiber?.Key != null)
+            {
+                // find the next oldFiber node without a key, or null
+                oldFiber = oldFiber.Sibling;
+            }
+
+            // newView
             _hasNext = _children.MoveNext();
             newView = _hasNext ? _children.Current : null;
-        } while (oldFiber != null || _hasNext);
+        }
 
     }
 
