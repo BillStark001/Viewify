@@ -48,7 +48,7 @@ public sealed class Scheduler
         // - handle dispatch
         // - commit work
         // - create work
-        // - diffing & reconcilation
+        // - diffing & reconciliation
 
         // if a dispatch is scheduled, prioritize it
 
