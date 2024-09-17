@@ -12,6 +12,12 @@ public abstract class StateWithDispatch : IState
     public Action<Action> Dispatch { get; set; } = null!;
 
     public abstract object? GetValue();
+
+    public static StateWithDispatch Create(Type type, Action<Action> dispatch, object initialValue)
+    {
+        var genericType = typeof(StateWithDispatch<>).MakeGenericType(type);
+        return (StateWithDispatch)Activator.CreateInstance(genericType, dispatch, initialValue)!;
+    }
 }
 
 public class StateWithDispatch<T> : StateWithDispatch, IState<T>

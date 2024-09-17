@@ -11,25 +11,25 @@ using Viewify.Core.Utils;
 namespace Viewify.Core.Render;
 
 
-
-
-
 public sealed class Scheduler
 {
 
-    private readonly ConcurrentQueue<(Fiber<ViewNode>, Func<View?>)> _dispatchQueue = new();
+    private readonly ConcurrentQueue<(Fiber<ViewNode>, Action)> _dispatchQueue = new();
     private readonly Dictionary<object, Fiber<ViewNode>> _dict = [];
     private readonly ViewRecordCache _recordCache = new();
 
-    private Fiber<ViewNode> _root;
+    private readonly Fiber<ViewNode> _root;
     private Fiber<ViewNode>? _renderRoot;
-    private Fiber<ViewNode>? _wip;
+    private Fiber<ViewNode>? _wipRoot;
     private Fiber<ViewNode>? _current;
 
+    public INativeHandler Handler { get; init; }
 
-    public Scheduler(View rootNode)
+
+    public Scheduler(View rootNode, INativeHandler handler)
     {
         _root = CreateFiber(rootNode);
+        Handler = handler;
     }
 
     private Fiber<ViewNode> CreateFiber(View? view)
@@ -40,44 +40,95 @@ public sealed class Scheduler
 
     public void Tick()
     {
+        // precedence: 
+        // - handle dispatch
+        // - commit work
+        // - create work
+        // - diffing & reconcilation
+
         // if a dispatch is scheduled, prioritize it
+
+        var dispatchHandled = false;
         while (_dispatchQueue.TryDequeue(out var d))
         {
             HandleDispatch(d);
+            dispatchHandled = true;
+        }
+        if (dispatchHandled)
+        {
+            return;
         }
 
-        // if the diff task is complete, commit it
-        if (_wip != null && _current == null)
+        if (_wipRoot == null)
         {
-            // TODO commit
+            CreateWipRoot();
         }
-        // if it is not complete, perform once
-        if (_wip != null && _current != null)
+        else
         {
-            _current = PerformDiffWorkAndGetNext(_current);
+            if (_current == null)
+            {
+                // diffing is complete, commit
+                CommitWipRoot();
+            } 
+            else
+            {
+                _current = PerformDiffWorkAndGetNext(_current);
+            }
         }
 
         // else, do nothing
     }
 
+    public void Dispatch(Fiber<ViewNode> node, Action action)
+    {
+        _dispatchQueue.Enqueue((node, action));
+    }
 
-    public void HandleDispatch((Fiber<ViewNode>, Func<View?>) t)
+    public void CreateWipRoot()
+    {
+        if (_renderRoot == null)
+        {
+            return;
+        }
+
+        var v = _renderRoot.Content.View;
+
+        _wipRoot = CreateFiber(_renderRoot.Content.View);
+        _wipRoot.Key = v?.Key;
+        _wipRoot.Alternate = _renderRoot;
+        _wipRoot.Parent = _renderRoot.Parent;
+        _wipRoot.Tag = FiberTag.Update;
+
+        _current = _wipRoot;
+
+    }
+
+    public void HandleDispatch((Fiber<ViewNode>, Action) t)
     {
         var (f, a) = t;
-        var newViewRoot = a();
-        _renderRoot = f;
-        _wip = null;
-        _current = null;
-        // TODO judge the precedence if a render root exists
-        if (f != null)
-        {
-            // discard the old wip fiber and create a new one
-            _wip = CreateFiber(newViewRoot);
-            _wip.Key = newViewRoot?.Key;
-            _wip.Alternate = f;
-            _wip.Tag = FiberTag.Update;
+        a();
 
-            _current = _wip;
+        // halt the current render
+        _wipRoot = null;
+        _current = null;
+
+        // assign render root
+        // if one already exists, check ancestry and use the higher one
+        var renderRootFound = false;
+        var current = f;
+        while (_renderRoot != null && current != null)
+        {
+            if (current == _renderRoot)
+            {
+                renderRootFound = true;
+                break;
+            }
+            current = current.Parent;
+        }
+
+        if (!renderRootFound)
+        {
+            _renderRoot = f;
         }
     }
 
@@ -85,14 +136,24 @@ public sealed class Scheduler
     {
         if (v == null)
         {
-            return [];
+            yield break;
         }
         if (v is NativeView || v is Fragment)
         {
-            return v.Children ?? [];
+            if (v.Children != null)
+            {
+                foreach (var child in v.Children)
+                {
+                    yield return child;
+                }
+            }
         }
         var r = v.Render();
-        return r != null ? [r] : [];
+        if (r == null)
+        {
+            yield break;
+        }
+        yield return r;
     }
 
     public Fiber<ViewNode>? PerformDiffWorkAndGetNext(Fiber<ViewNode> current)
@@ -106,7 +167,6 @@ public sealed class Scheduler
         return current.Next();
 
     }
-
 
     public void ReconcileChildren(Fiber<ViewNode> v, IEnumerable<View> children, bool useKey = false)
     {
@@ -243,4 +303,18 @@ public sealed class Scheduler
 
     }
 
+
+    public void CommitWipRoot()
+    {
+        var currentFiber = _wipRoot;
+        while (currentFiber != null)
+        {
+            currentFiber.Content.OnVisit(currentFiber);
+            currentFiber.Detach();
+            currentFiber = currentFiber.Next();
+        }
+
+        _wipRoot = null;
+        _renderRoot = null;
+    }
 }

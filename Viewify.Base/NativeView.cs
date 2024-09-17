@@ -6,18 +6,30 @@ using System.Threading.Tasks;
 
 namespace Viewify.Base;
 
-public abstract class NativeView : View
+public class NativeView : View
 {
     public sealed override View? Render()
     {
         throw new InvalidOperationException();
     }
 
-    public abstract void Mount();
+    public void Mount(INativeHandler h)
+    {
+        h.Mount(this);
+    }
 
-    public abstract void Update();
+    public void Update(INativeHandler h)
+    {
+        h.Update(this);
+    }
 
-    public abstract void Unmount();
+    public void Unmount(INativeHandler h)
+    {
+        h.Unmount(this);
+    }
 
-    public abstract void Move();
+    public void Move(INativeHandler h)
+    {
+        h.Move(this);
+    }
 }

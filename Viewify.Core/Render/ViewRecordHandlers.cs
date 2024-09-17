@@ -12,22 +12,21 @@ namespace Viewify.Core.Render;
 public static class ViewRecordHandlers
 {
     // states
-    public static void InitializeState(this ViewRecord record, View? instance)
+    public static void InitializeState(this ViewRecord record, Fiber<ViewNode> node, Scheduler scheduler)
     {
+        var instance = node.Content.View;
+        void dispatch(Action a) => scheduler.Dispatch(node, a);
+
         foreach (var (field, type, defaultValue, factory, _, setter) in record.StateFields)
         {
-            if (field.GetValue(instance) is IState state)
-            {
-                SetStateValue(state, defaultValue, factory, type, setter);
-            }
+            IState s = StateWithDispatch.Create(type, dispatch, factory?.Create() ?? defaultValue!);
+            setter?.Invoke(instance, [s]);
         }
 
         foreach (var (property, type, defaultValue, factory, _, setter) in record.StateProperties)
         {
-            if (property.GetValue(instance) is IState state)
-            {
-                SetStateValue(state, defaultValue, factory, type, setter);
-            }
+            IState s = StateWithDispatch.Create(type, dispatch, factory?.Create() ?? defaultValue!);
+            setter?.Invoke(instance, [s]);
         }
     }
 

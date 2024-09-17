@@ -4,9 +4,9 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Viewify.Base;
+namespace Viewify.Base.Native;
 
-public interface IViewifyInstance
+public class Container : NativeView
 {
 
 }

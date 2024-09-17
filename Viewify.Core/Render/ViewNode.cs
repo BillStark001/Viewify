@@ -22,7 +22,7 @@ public class ViewNode
     // TODO effect deps record
 
     private object?[] _effectDeps;
-    private bool[] _effectDepChanged;
+    private readonly bool[] _effectDepChanged;
 
     public ViewNode(View? view, Scheduler scheduler, ViewRecordCache cache)
     {
@@ -43,7 +43,7 @@ public class ViewNode
         {
             foreach (var item in newFiber.OperativeFibers)
             {
-                item.Content.OnVisit(item);
+                item.Content.OnVisit(item, true);
             }
         }
 
@@ -51,7 +51,7 @@ public class ViewNode
         {
             // TODO delay effects to execute after traverse
             case FiberTag.Create:
-                OnMount(newFiber.Parent);
+                OnMount(newFiber);
                 break;
             case FiberTag.Update:
                 OnUpdate(oldFiber!, newFiber);
@@ -68,7 +68,7 @@ public class ViewNode
                 break;
         }
 
-        newFiber.VisitComplete();
+        newFiber.Detach();
     }
 
     public void UpdateContext(View? newView, Fiber<ViewNode>? parentFiber)
@@ -87,18 +87,18 @@ public class ViewNode
         }
     }
 
-    public void OnMount(Fiber<ViewNode>? parentFiber)
+    public void OnMount(Fiber<ViewNode> newFiber)
     {
         // inject variables
         // state
-        Record.InitializeState(View);
+        Record.InitializeState(newFiber, Scheduler);
         // context
-        UpdateContext(View, parentFiber);
+        UpdateContext(View, newFiber.Parent);
         Record.InitializeContext(View, Context);
 
         if (View is NativeView nativeView)
         {
-            nativeView.Mount();
+            nativeView.Mount(Scheduler.Handler);
         }
 
         // calc effect deps
@@ -130,7 +130,7 @@ public class ViewNode
 
         if (newFiber.Content.View is NativeView nativeView)
         {
-            nativeView.Update();
+            nativeView.Update(Scheduler.Handler);
         }
 
         // compare & calc effect deps
@@ -149,7 +149,7 @@ public class ViewNode
 
         if (oldFiber.Content.View is NativeView nativeView)
         {
-            nativeView.Unmount();
+            nativeView.Unmount(Scheduler.Handler);
         }
     }
 
@@ -157,7 +157,7 @@ public class ViewNode
     {
         if (oldFiber.Content.View is NativeView nativeView)
         {
-            nativeView.Move();
+            nativeView.Move(Scheduler.Handler);
         }
     }
 }

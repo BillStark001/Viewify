@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Viewify.Base;
+using Viewify.Base.Native;
 using View = Viewify.Base.View;
 
 namespace Viewify.Test.WinForm;
@@ -22,7 +23,7 @@ internal class TestSubView : View
 
     public override View? Render()
     {
-        return null;
+        return new Text(Context.TestField.ToString());
     }
 }
 
