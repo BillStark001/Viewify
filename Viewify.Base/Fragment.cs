@@ -6,16 +6,11 @@ using System.Threading.Tasks;
 
 namespace Viewify.Base;
 
-public sealed class Fragment : View
+public class Fragment(bool useKey = false) : View
 {
-    [Prop] public bool UseKey { get; private set; }
+    [Prop] public bool UseKey { get; private set; } = useKey;
 
-    public Fragment(bool useKey = false)
-    {
-        UseKey = useKey;
-    }
-
-    public override View? Render()
+    public sealed override View? Render()
     {
         throw new InvalidOperationException();
     }

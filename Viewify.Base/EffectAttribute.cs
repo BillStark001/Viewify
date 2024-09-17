@@ -7,14 +7,9 @@ using System.Threading.Tasks;
 namespace Viewify.Base;
 
 [AttributeUsage(AttributeTargets.Method)]
-public class EffectAttribute: Attribute
+public class EffectAttribute(params string[] dependencies) : Attribute
 {
-    public string[] Dependencies { get; init; }
-
-    public EffectAttribute(params string[] dependencies)
-    {
-        this.Dependencies = (string[]) dependencies.Clone();
-    }
+    public string[] Dependencies { get; init; } = (string[])dependencies.Clone();
 }
 
 [AttributeUsage(AttributeTargets.Method)]

@@ -11,7 +11,7 @@ namespace Viewify.Core.Utils;
 public class AsyncPriorityQueue<TElement, TPriority>
 {
     private readonly PriorityQueue<(TElement Element, long Index), TPriority> _queue;
-    private readonly SemaphoreSlim _signal = new SemaphoreSlim(0);
+    private readonly SemaphoreSlim _signal = new(0);
     private long _index = 0;
 
     public AsyncPriorityQueue()

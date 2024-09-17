@@ -34,14 +34,9 @@ public interface IState<V> : IState
 }
 
 [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property)]
-public class DefaultStateAttribute : Attribute
+public class DefaultStateAttribute(object? value) : Attribute
 {
-    public object? Value { get; init; }
-
-    public DefaultStateAttribute(object? value)
-    {
-        Value = value;
-    }
+    public object? Value { get; init; } = value;
 }
 
 public interface IDefaultValueFactory

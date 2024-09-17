@@ -7,15 +7,9 @@ using System.Threading.Tasks;
 namespace Viewify.Base;
 
 [AttributeUsage(AttributeTargets.Property | AttributeTargets.Field)]
-public class InjectAttribute : Attribute
+public class InjectAttribute(string name, object? value) : Attribute
 {
-    public string Name { get; init; }
+    public string Name { get; init; } = name;
 
-    public object? Value { get; init; }
-
-    public InjectAttribute(string name, object? value)
-    {
-        Name = name;
-        Value = value;
-    }
+    public object? Value { get; init; } = value;
 }

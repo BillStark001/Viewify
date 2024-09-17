@@ -6,14 +6,9 @@ using System.Threading.Tasks;
 
 namespace Viewify.Core.Utils;
 
-public struct ImmutableWrapper<T> where T : class
+public struct ImmutableWrapper<T>(T value) where T : class
 {
-    private readonly T value;
-
-    public ImmutableWrapper(T value)
-    {
-        this.value = value;
-    }
+    private readonly T value = value;
 
     public static T operator ~(ImmutableWrapper<T> w) => w.value;
 
@@ -23,14 +18,9 @@ public struct ImmutableWrapper<T> where T : class
     }
 }
 
-public struct StringWrapper
+public struct StringWrapper(string value)
 {
-    private readonly string value;
-
-    public StringWrapper(string value)
-    {
-        this.value = value ?? "";
-    }
+    private readonly string value = value ?? "";
 
     public int Length => value.Length;
 

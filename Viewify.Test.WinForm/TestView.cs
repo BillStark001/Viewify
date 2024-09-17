@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 using Viewify.Base;
 using View = Viewify.Base.View;
 
-namespace Viewify.Core.Views;
+namespace Viewify.Test.WinForm;
 
 
 
@@ -17,43 +17,45 @@ internal class TestFactory : IDefaultValueFactory
 
 internal class TestSubView : View
 {
+
+    [Context] public TestContext Context { get; set; } = new();
+
     public override View? Render()
     {
         return null;
     }
 }
 
-internal class TestView : View
+internal class TestContext
+{
+    public int TestField { get; init; } = 0;
+}
+
+internal class TestView(int testValue) : View
 {
 
 
-    [Prop] public int TestValue { get; set; }
+    [Prop] public int TestValue { get; set; } = testValue;
 
     [DefaultStateFactory(typeof(TestFactory))] IState<int> IntState = null!;
 
     [DefaultState(1234)] IState<int> WeirdState = null!;
 
-    public TestView(int testValue)
-    {
-        TestValue = testValue;
-
-    }
-
     void IncrementState()
     {
-        IntState %= (~IntState) + 1;
+        IntState %= ~IntState + 1;
     }
 
     [Effect(nameof(IntState))]
     void ChangeState()
     {
-        WeirdState %= (~IntState);
+        WeirdState %= ~IntState;
     }
 
     public override View? Render()
     {
-        var intValue = ~IntState;
-        return new Fragment().SetChildren(
+        var intValue = ~WeirdState;
+        return new ContextProvider(new TestContext() { TestField = intValue }).SetChildren(
                 new TestSubView(),
                 new TestSubView()
                 );

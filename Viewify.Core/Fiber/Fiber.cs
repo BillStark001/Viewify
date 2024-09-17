@@ -14,14 +14,14 @@ public enum FiberTag : int
     Insert,
 }
 
-public class Fiber<N>
+public class Fiber<N>(N content, object? key = default)
 {
 
 
 
     // tree structure
 
-    public N Content { get; }
+    public N Content { get; } = content;
 
     public Fiber<N>? Sibling { get; set; }
     public Fiber<N>? Child { get; set; }
@@ -29,18 +29,11 @@ public class Fiber<N>
 
     public Fiber<N>? Alternate { get; set; }
 
-    public FiberTag? Tag { get; set; } 
+    public FiberTag? Tag { get; set; }
 
-    public object? Key { get; set; }
+    public object? Key { get; set; } = key;
 
     public static N operator ~(Fiber<N> f) => f.Content;
-
-
-    public Fiber(N content, object? key = default)
-    {
-        Content = content;
-        Key = key;
-    }
 
     /// <summary>
     /// child -> sibling -> return

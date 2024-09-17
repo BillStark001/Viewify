@@ -5,7 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Viewify.Core.Utils;
 
-namespace Viewify.Core.Model;   
+namespace Viewify.Core.Model;
 
 public class ViewRecordCache
 {

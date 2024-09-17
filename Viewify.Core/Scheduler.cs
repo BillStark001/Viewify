@@ -86,14 +86,14 @@ public sealed class Scheduler
     {
         if (v == null)
         {
-            return Enumerable.Empty<View>();
+            return [];
         }
         if (v is NativeView || v is Fragment)
         {
-            return v.Children;
+            return v.Children ?? [];
         }
         var r = v.Render();
-        return r != null ? new[] { r } : Enumerable.Empty<View>();
+        return r != null ? [r] : [];
     }
 
     public Fiber<ViewNode>? PerformDiffWorkAndGetNext(Fiber<ViewNode> current)

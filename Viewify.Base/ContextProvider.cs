@@ -6,18 +6,18 @@ using System.Threading.Tasks;
 
 namespace Viewify.Base;
 
-public class ContextProvider<T> : View
+
+public class ContextProvider(object? value) : Fragment
+{
+    [Prop] public object? Value { get; protected set; } = value;
+}
+
+public class ContextProvider<T>(T value) : ContextProvider(value) where T : class
 {
 
-    [Prop] public T Value { get; private set; }
-
-    public ContextProvider(T value)
+    public new T Value
     {
-        Value = value;
-    }
-
-    public override View? Render()
-    {
-        throw new InvalidOperationException();
+        get => (base.Value as T)!;
+        set => base.Value = value;
     }
 }
