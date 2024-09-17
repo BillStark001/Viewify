@@ -12,6 +12,12 @@ namespace Viewify.Core.Model;
 
 public class ViewRecord
 {
+
+    const BindingFlags F = BindingFlags.Public |
+                           BindingFlags.NonPublic |
+                           // BindingFlags.Static |
+                           // BindingFlags.FlattenHierarchy |
+                           BindingFlags.Instance;
     public Type ViewType { get; }
 
     public IList<FieldInfo> PropFields { get; }
@@ -85,7 +91,7 @@ public class ViewRecord
             }
         }
 
-        foreach (var f in ViewType.GetFields())
+        foreach (var f in ViewType.GetFields(F))
         {
             propFlag = null;
             stateFlag1 = null;
@@ -108,8 +114,8 @@ public class ViewRecord
                     .First(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IState<>))
                     .GetGenericArguments()[0];
                 fStates.Add((f, genericArgument, stateFlag1?.Value, stateFlag2?.Factory,
-                    f.FieldType.GetMethod(STATE_GET),
-                    f.FieldType.GetMethod(STATE_SET)));
+                    f.FieldType.GetMethod(STATE_GET, F),
+                    f.FieldType.GetMethod(STATE_SET, F)));
             }
             else if (contextFlag != null)
             {
@@ -117,7 +123,7 @@ public class ViewRecord
             }
         }
 
-        foreach (var p in ViewType.GetProperties())
+        foreach (var p in ViewType.GetProperties(F))
         {
             propFlag = null;
             stateFlag1 = null;
@@ -140,8 +146,8 @@ public class ViewRecord
                     .First(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IState<>))
                     .GetGenericArguments()[0];
                 pStates.Add((p, genericArgument, stateFlag1?.Value, stateFlag2?.Factory,
-                    p.PropertyType.GetMethod(STATE_GET),
-                    p.PropertyType.GetMethod(STATE_SET)));
+                    p.PropertyType.GetMethod(STATE_GET, F),
+                    p.PropertyType.GetMethod(STATE_SET, F)));
             }
             else if (contextFlag != null)
             {
@@ -162,7 +168,7 @@ public class ViewRecord
         var unmountEffects = new List<MethodInfo>();
         var effects = new Dictionary<string, List<MethodInfo>>();
 
-        foreach (var p in ViewType.GetMethods())
+        foreach (var p in ViewType.GetMethods(F))
         {
             var effectAttrs = p.GetCustomAttributes<EffectAttribute>();
             List<string> deps = [];
@@ -217,16 +223,16 @@ public class ViewRecord
 
         foreach (var k in Effects.Keys)
         {
-            var f = viewType.GetField(k);
-            var p = viewType.GetProperty(k);
+            var f = viewType.GetField(k, F);
+            var p = viewType.GetProperty(k, F);
 
             if (f != null)
             {
-                effectDepFields.Add((f, f.FieldType.IsAssignableTo(typeof(IState)) ? f.FieldType.GetMethod(STATE_GET) : null));
+                effectDepFields.Add((f, f.FieldType.IsAssignableTo(typeof(IState)) ? f.FieldType.GetMethod(STATE_GET, F) : null));
             }
             else if (p != null)
             {
-                effectDepProperties.Add((p, p.PropertyType.IsAssignableTo(typeof(IState)) ? p.PropertyType.GetMethod(STATE_GET) : null));
+                effectDepProperties.Add((p, p.PropertyType.IsAssignableTo(typeof(IState)) ? p.PropertyType.GetMethod(STATE_GET, F) : null));
             }
         }
 
