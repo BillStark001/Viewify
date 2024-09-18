@@ -22,7 +22,7 @@ public partial class Form1 : Form
         _rootNode = new(_testValue);
         _handler = new(flowLayoutPanel1);
         _scheduler = new(_rootNode, _handler);
-        _isRendering = true;
+        //_isRendering = true;
         TriggerRender();
     }
 
@@ -33,7 +33,7 @@ public partial class Form1 : Form
             return;
         }
         _scheduler.Tick();
-        SetTimeout(1000, TriggerRender);
+        SetTimeout(100, TriggerRender);
     }
 
     private System.Windows.Forms.Timer timer = new();
@@ -53,6 +53,11 @@ public partial class Form1 : Form
     private void button1_Click(object sender, EventArgs e)
     {
         ++_testValue;
-        _rootNode.TestValue %= _testValue;
+        _rootNode.IntState %= _testValue;
+    }
+
+    private void button2_Click(object sender, EventArgs e)
+    {
+        _scheduler.Tick();
     }
 }

@@ -29,7 +29,7 @@ internal class TestSubView : View
 
 internal class TestContext
 {
-    public int TestField { get; init; } = 0;
+    public int TestField { get; init; } = 42;
 }
 
 internal class TestView(int testValue) : View
@@ -38,7 +38,7 @@ internal class TestView(int testValue) : View
 
     [Prop] public int TestValue { get; set; } = testValue;
 
-    [DefaultStateFactory(typeof(TestFactory))] IState<int> IntState = null!;
+    [DefaultStateFactory(typeof(TestFactory))] public IState<int> IntState = null!;
 
     [DefaultState(1234)] IState<int> WeirdState = null!;
 

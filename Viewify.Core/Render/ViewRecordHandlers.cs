@@ -12,19 +12,30 @@ namespace Viewify.Core.Render;
 public static class ViewRecordHandlers
 {
     // states
-    public static void InitializeState(this ViewRecord record, Fiber<ViewNode> node, Scheduler scheduler)
+    public static void InitializeState(
+        this ViewRecord record,
+        Fiber<ViewNode> node,
+        Scheduler scheduler,
+        bool temporary = false
+    )
     {
         var instance = node.Content.View;
 
         foreach (var (field, type, defaultValue, factory, _, _) in record.StateFields)
         {
-            IState s = StateWithDispatch.Create(type, scheduler, node, factory?.Create() ?? defaultValue!);
+            var iv = factory?.Create() ?? defaultValue!;
+            IState s = temporary 
+                ? ImmutableState<int>.Create(type, iv)
+                : StateWithDispatch.Create(type, scheduler, node, iv);
             field.SetValue(instance, s);
         }
 
         foreach (var (property, type, defaultValue, factory, _, _) in record.StateProperties)
         {
-            IState s = StateWithDispatch.Create(type, scheduler, node, factory?.Create() ?? defaultValue!);
+            var iv = factory?.Create() ?? defaultValue!;
+            IState s = temporary
+                ? ImmutableState<int>.Create(type, iv)
+                : StateWithDispatch.Create(type, scheduler, node, iv);
             property.SetValue(instance, s);
         }
     }
@@ -54,30 +65,19 @@ public static class ViewRecordHandlers
     {
         foreach (var (field, _, _, _, g1, s1) in record.StateFields)
         {
-            if (field.GetValue(source) is IState sourceState && field.GetValue(destination) is IState destState)
+            if (field.GetValue(source) is IState sourceState)
             {
-                MigrateState(sourceState, destState, g1, s1);
+                field.SetValue(destination, sourceState);
             }
         }
 
         foreach (var (property, _, _, _, g1, s1) in record.StateProperties)
         {
-            if (property.GetValue(source) is IState sourceState && property.GetValue(destination) is IState destState)
+            if (property.GetValue(source) is IState sourceState)
             {
-                MigrateState(sourceState, destState, g1, s1);
+                property.SetValue(destination, sourceState);
             }
         }
-    }
-
-    public static void MigrateState(
-        IState sourceState, IState destState,
-        MethodInfo? sourceGetMethod, MethodInfo? destSetMethod)
-    {
-        if (sourceGetMethod == null || destSetMethod == null)
-            throw new InvalidOperationException("Get or Set method not found on IState<T>");
-
-        var value = sourceGetMethod.Invoke(sourceState, null);
-        destSetMethod.Invoke(destState, [value]);
     }
 
     // props
@@ -123,10 +123,10 @@ public static class ViewRecordHandlers
             var oldValue = destination[i];
             object? newValue = field.GetValue(source);
             if (getter != null) // this is an IState<>
-            { 
+            {
                 newValue = getter.Invoke(newValue, null);
             }
-            var neq = oldValue != newValue;
+            var neq = !Equals(oldValue, newValue);
             hasChange = hasChange || neq;
             changed[i] = neq;
             if (neq)
@@ -144,7 +144,7 @@ public static class ViewRecordHandlers
             {
                 newValue = getter.Invoke(newValue, null);
             }
-            var neq = oldValue != newValue;
+            var neq = !Equals(oldValue, newValue);
             hasChange = hasChange || neq;
             changed[i] = neq;
             if (neq)

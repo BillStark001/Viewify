@@ -81,7 +81,7 @@ public class ViewNode
             var key = cp.Value?.GetType().GetUniqueName() ?? "";
             Context = new(parentFiber?.Content.Context, new Dictionary<string, object>
             {
-                [key] = newView,
+                [key] = cp.Value!,
             });
         }
         else
@@ -90,10 +90,37 @@ public class ViewNode
         }
     }
 
-    public void OnInit(Fiber<ViewNode> newFiber)
+    public void OnInit(Fiber<ViewNode> newFiber, Fiber<ViewNode>? oldFiber, bool doInitStates = false)
     {
-        // TODO check rationality
-        OnMount(newFiber);
+        // assert newFiber.content == this
+
+        var oldView = oldFiber?.Content.View;
+        var newView = newFiber.Content.View;
+
+        if (newView == null)
+        {
+            return;
+        }
+
+        if (doInitStates)
+        {
+            // do nothing
+        }
+        else if (oldView == null)
+        {
+            Record.InitializeState(newFiber, Scheduler, true);
+        }
+        else
+        {
+            // these will be rewritten
+            Record.MigrateStates(oldView, newView);
+        }
+
+        if (oldFiber != null)
+        {
+            Record.InitializeContext(newView, oldFiber.Content.Context);
+        }
+
     }
 
     public void OnMount(Fiber<ViewNode> newFiber)
@@ -117,16 +144,17 @@ public class ViewNode
 
     }
 
+    public void MergePropsFrom(View? newView)
+    {
+        Record.CompareAndMigrateProps(newView, View);
+    }
+
     public void OnUpdate(Fiber<ViewNode> oldFiber, Fiber<ViewNode> newFiber)
     {
         // assume newFiber.Content == this
+        // assume the props are already merged
         var oldView = oldFiber.Content.View;
         var newView = newFiber.Content.View;
-
-        // compare props
-        // if props are not the same:
-        // migrate new props to old ones
-        Record.CompareAndMigrateProps(newView, oldView);
 
         // reuse the old view in all cases
         // also migrate information
@@ -135,8 +163,8 @@ public class ViewNode
         Record.MigrateStateFiberNodes(oldView, newFiber);
 
         // migrate & init context
-        UpdateContext(newView, newFiber.Parent);
-        Record.InitializeContext(newView, Context);
+        UpdateContext(oldView, newFiber.Parent);
+        Record.InitializeContext(oldView, Context);
 
         if (newFiber.Content.View is NativeView nativeView)
         {

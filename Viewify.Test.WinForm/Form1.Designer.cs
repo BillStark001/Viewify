@@ -30,6 +30,7 @@
         {
             button1 = new Button();
             flowLayoutPanel1 = new FlowLayoutPanel();
+            button2 = new Button();
             SuspendLayout();
             // 
             // button1
@@ -49,11 +50,22 @@
             flowLayoutPanel1.Size = new Size(250, 94);
             flowLayoutPanel1.TabIndex = 1;
             // 
+            // button2
+            // 
+            button2.Location = new Point(22, 180);
+            button2.Name = "button2";
+            button2.Size = new Size(143, 46);
+            button2.TabIndex = 2;
+            button2.Text = "button2";
+            button2.UseVisualStyleBackColor = true;
+            button2.Click += button2_Click;
+            // 
             // Form1
             // 
             AutoScaleDimensions = new SizeF(7F, 17F);
             AutoScaleMode = AutoScaleMode.Font;
             ClientSize = new Size(800, 450);
+            Controls.Add(button2);
             Controls.Add(flowLayoutPanel1);
             Controls.Add(button1);
             Name = "Form1";
@@ -66,5 +78,6 @@
 
         private Button button1;
         private FlowLayoutPanel flowLayoutPanel1;
+        private Button button2;
     }
 }

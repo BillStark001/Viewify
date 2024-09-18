@@ -28,18 +28,29 @@ public sealed class Scheduler
 
     public Scheduler(View rootNode, INativeHandler handler)
     {
-        _root = CreateFiber(rootNode);
         Handler = handler;
-        _root.Content.OnInit(_root);
+        _root = CreateFiber(rootNode, null, true);
 
         // render initial view
         _renderRoot = _root;
         CreateWipRoot();
     }
 
-    private Fiber<ViewNode> CreateFiber(View? view)
+    private Fiber<ViewNode> CreateFiber(View? view, Fiber<ViewNode>? oldFiber = null, bool isRoot = false, bool doInitStates = false)
     {
-        return new(new(view, this, _recordCache));
+        var ret = new Fiber<ViewNode>(new(view, this, _recordCache));
+        if (isRoot)
+        {
+            // the mount event is executed here
+            ret.Content.OnMount(ret);
+        }
+        else
+        {
+            // the mount event will be executed otherwise
+            // just fill all null hooks
+            ret.Content.OnInit(ret, oldFiber, doInitStates);
+        }
+        return ret;
     }
 
 
@@ -98,7 +109,7 @@ public sealed class Scheduler
 
         var v = _renderRoot.Content.View;
 
-        _wipRoot = CreateFiber(_renderRoot.Content.View);
+        _wipRoot = CreateFiber(_renderRoot.Content.View, _renderRoot);
         _wipRoot.Key = v?.Key;
         _wipRoot.Alternate = _renderRoot;
         _wipRoot.Parent = _renderRoot.Parent;
@@ -214,16 +225,16 @@ public sealed class Scheduler
 
         // new views to create fiber nodes
         // note: null is a valid view type, 
-        // so check the exhaustion of children by _hasNext
+        // so check the exhaustion of children by newViewExists
         var _children = children.GetEnumerator();
-        var _hasNext = _children.MoveNext();
-        var newView = _hasNext ? _children.Current : null;
+        var newViewExists = _children.MoveNext();
+        var newView = newViewExists ? _children.Current : null;
 
         Fiber<ViewNode> prevNewFiber = v;
 
         var initial = true;
 
-        while (oldFiber != null || _hasNext)
+        while (oldFiber != null || newViewExists)
         {
 
             var newKey = newView?.Key;
@@ -245,7 +256,9 @@ public sealed class Scheduler
 
             if (viewHasSameType)
             {
-                newFiber = CreateFiber(newView);
+                newFiber = CreateFiber(logicalOldView, logicalOldFiber, doInitStates: true);
+                newFiber.Content.MergePropsFrom(newView);
+
                 newFiber.Parent = v;
                 newFiber.Alternate = logicalOldFiber;
                 newFiber.Tag = FiberTag.Update;
@@ -263,9 +276,9 @@ public sealed class Scheduler
             else
             {
                 // remove if exists & add
-                if (_hasNext)
+                if (newViewExists)
                 {
-                    newFiber = CreateFiber(newView);
+                    newFiber = CreateFiber(newView, logicalOldFiber);
                     newFiber.Parent = v;
                     newFiber.Tag = FiberTag.Create;
                     if (useKey)
@@ -310,8 +323,8 @@ public sealed class Scheduler
             }
 
             // newView
-            _hasNext = _children.MoveNext();
-            newView = _hasNext ? _children.Current : null;
+            newViewExists = _children.MoveNext();
+            newView = newViewExists ? _children.Current : null;
         }
 
     }
