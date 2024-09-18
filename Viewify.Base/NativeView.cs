@@ -8,6 +8,8 @@ namespace Viewify.Base;
 
 public class NativeView : View
 {
+    public object? NativeObject { get; set; }
+
     public sealed override View? Render()
     {
         throw new InvalidOperationException();
