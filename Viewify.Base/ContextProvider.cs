@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 namespace Viewify.Base;
 
 
-public class ContextProvider(object? value) : Fragment
+public class ContextProvider(object? value, bool useKey = false) : Fragment(useKey)
 {
     [Prop] public object? Value { get; protected set; } = value;
 }
