@@ -15,35 +15,39 @@ public static class ViewRecordHandlers
     public static void InitializeState(this ViewRecord record, Fiber<ViewNode> node, Scheduler scheduler)
     {
         var instance = node.Content.View;
-        void dispatch(Action a) => scheduler.Dispatch(node, a);
 
-        foreach (var (field, type, defaultValue, factory, _, setter) in record.StateFields)
+        foreach (var (field, type, defaultValue, factory, _, _) in record.StateFields)
         {
-            IState s = StateWithDispatch.Create(type, dispatch, factory?.Create() ?? defaultValue!);
-            setter?.Invoke(instance, [s]);
+            IState s = StateWithDispatch.Create(type, scheduler, node, factory?.Create() ?? defaultValue!);
+            field.SetValue(instance, s);
         }
 
-        foreach (var (property, type, defaultValue, factory, _, setter) in record.StateProperties)
+        foreach (var (property, type, defaultValue, factory, _, _) in record.StateProperties)
         {
-            IState s = StateWithDispatch.Create(type, dispatch, factory?.Create() ?? defaultValue!);
-            setter?.Invoke(instance, [s]);
+            IState s = StateWithDispatch.Create(type, scheduler, node, factory?.Create() ?? defaultValue!);
+            property.SetValue(instance, s);
         }
     }
 
-    public static void SetStateValue(
-        IState state, object? defaultValue,
-        IDefaultValueFactory? factory,
-        Type genericArgument, MethodInfo? setValue
-       )
+    public static void MigrateStateFiberNodes(this ViewRecord record, View? view, Fiber<ViewNode> fiber)
     {
-        if (setValue == null)
-            throw new InvalidOperationException("Set method not found on IState<T>");
+        foreach (var (field, _, _, _, _, _) in record.StateFields)
+        {
+            var state = field.GetValue(view) as StateWithDispatch;
+            if (state != null)
+            {
+                state.Fiber = fiber;
+            }
+        }
 
-        object? value = factory?.Create() ?? defaultValue;
-        if (value != null && !genericArgument.IsInstanceOfType(value))
-            throw new InvalidOperationException($"Default value type mismatch. Expected {genericArgument.Name}, got {value.GetType().Name}");
-
-        setValue.Invoke(state, [value]);
+        foreach (var (property, _, _, _, _, _) in record.StateProperties)
+        {
+            var state = property.GetValue(view) as StateWithDispatch;
+            if (state != null)
+            {
+                state.Fiber = fiber;
+            }
+        }
     }
 
     public static void MigrateStates(this ViewRecord record, View? source, View? destination)
@@ -85,7 +89,7 @@ public static class ViewRecordHandlers
         {
             var oldValue = field.GetValue(source);
             var newValue = field.GetValue(destination);
-            var neq = oldValue != newValue;
+            var neq = !Equals(oldValue, newValue);
             hasChange = hasChange || neq;
             if (neq)
             {
@@ -97,7 +101,7 @@ public static class ViewRecordHandlers
         {
             var oldValue = property.GetValue(source);
             var newValue = property.GetValue(destination);
-            var neq = oldValue != newValue;
+            var neq = !Equals(oldValue, newValue);
             hasChange = hasChange || neq;
             if (neq)
             {
@@ -117,8 +121,11 @@ public static class ViewRecordHandlers
         foreach (var (field, getter) in record.EffectDepFields)
         {
             var oldValue = destination[i];
-            var newValue = getter != null
-                ? getter.Invoke(source, null) : field.GetValue(source);
+            object? newValue = field.GetValue(source);
+            if (getter != null) // this is an IState<>
+            { 
+                newValue = getter.Invoke(newValue, null);
+            }
             var neq = oldValue != newValue;
             hasChange = hasChange || neq;
             changed[i] = neq;
@@ -132,8 +139,11 @@ public static class ViewRecordHandlers
         foreach (var (property, getter) in record.EffectDepProperties)
         {
             var oldValue = destination[i];
-            var newValue = getter != null
-                ? getter.Invoke(source, null) : property.GetValue(source);
+            object? newValue = property.GetValue(source);
+            if (getter != null) // this is an IState<>
+            {
+                newValue = getter.Invoke(newValue, null);
+            }
             var neq = oldValue != newValue;
             hasChange = hasChange || neq;
             changed[i] = neq;

@@ -9,11 +9,11 @@ namespace Viewify.Base;
 public class ConditionView(bool condition, View? trueCase = null, View? falseCase = null) : View
 {
 
-    [Prop] public bool Condition { get; private set; } = condition;
+    [Prop] public bool Condition { get; protected set; } = condition;
 
-    [Prop] public View? TrueCase { get; private set; } = trueCase;
+    [Prop] public View? TrueCase { get; protected set; } = trueCase;
 
-    [Prop] public View? FalseCase { get; private set; } = falseCase;
+    [Prop] public View? FalseCase { get; protected set; } = falseCase;
 
     public override View? Render()
     {

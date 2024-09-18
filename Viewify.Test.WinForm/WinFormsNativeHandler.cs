@@ -58,10 +58,11 @@ public class WinFormsNativeHandler(Control baseControl) : INativeHandler
         throw new NotImplementedException();
     }
 
-    public void Mount(NativeView v) {
+    public void Mount(NativeView v)
+    {
         if (v is Text t)
         {
-            var tb = new TextBox();
+            var tb = new Label();
             tb.Text = t.Value;
             t.NativeObject = tb;
             CurrentControl.Controls.Add(tb);
@@ -72,13 +73,14 @@ public class WinFormsNativeHandler(Control baseControl) : INativeHandler
     {
         if (v is Text t)
         {
-            var tb = t.NativeObject as TextBox;
+            var tb = t.NativeObject as Label;
             tb!.Text = t.Value;
         }
 
     }
 
-    public void Unmount(NativeView v) {
+    public void Unmount(NativeView v)
+    {
         if (v is Text t)
         {
             var tb = t.NativeObject as TextBox;
@@ -86,7 +88,8 @@ public class WinFormsNativeHandler(Control baseControl) : INativeHandler
         }
     }
 
-    public void Move(NativeView v) {
+    public void Move(NativeView v)
+    {
         if (v is Text t)
         {
             var tb = t.NativeObject as TextBox;

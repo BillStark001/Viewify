@@ -78,5 +78,37 @@ public class Fiber<N>(N content, object? key = default)
         type = FiberNextType.Parent;
         return Parent;
     }
+
+    public override string ToString()
+    {
+        return $"Fiber: {Content}, Tag={Tag}";
+    }
+
+    public void PrintTree(StringBuilder sb, string indent = "", bool isLast = true)
+    {
+        sb.Append(indent);
+
+        if (isLast)
+        {
+            sb.Append("└─");
+        }
+        else
+        {
+            sb.Append("├─");
+        }
+
+        sb.AppendLine(ToString());
+
+        Child?.PrintTree(sb, indent + "  ", Child.Sibling == null);
+
+        Sibling?.PrintTree(sb, indent, Sibling.Sibling == null);
+    }
+
+    public string PrintTree()
+    {
+        var sb = new StringBuilder();
+        PrintTree(sb);
+        return sb.ToString();
+    }
 }
 

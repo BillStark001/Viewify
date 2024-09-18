@@ -18,7 +18,7 @@ public sealed class Scheduler
     private readonly Dictionary<object, Fiber<ViewNode>> _dict = [];
     private readonly ViewRecordCache _recordCache = new();
 
-    private readonly Fiber<ViewNode> _root;
+    private Fiber<ViewNode> _root;
     private Fiber<ViewNode>? _renderRoot;
     private Fiber<ViewNode>? _wipRoot;
     private Fiber<ViewNode>? _current;
@@ -30,6 +30,7 @@ public sealed class Scheduler
     {
         _root = CreateFiber(rootNode);
         Handler = handler;
+        _root.Content.OnInit(_root);
 
         // render initial view
         _renderRoot = _root;
@@ -151,6 +152,7 @@ public sealed class Scheduler
                     yield return child;
                 }
             }
+            yield break;
         }
         var r = v.Render();
         if (r == null)
@@ -173,7 +175,7 @@ public sealed class Scheduler
         isParent = type == FiberNextType.Parent;
         while (ret != null && isParent)
         {
-            ret = current.Next(isParent, out type);
+            ret = ret.Next(isParent, out type);
             isParent = type == FiberNextType.Parent;
         }
         return ret;
@@ -367,7 +369,40 @@ public sealed class Scheduler
             currentFiber = nextFiber;
         }
 
+        // replace the old node in-place
+        if (_wipRoot!.Parent == null)
+        {
+            _root = _wipRoot;
+        }
+        else
+        {
+            var cursor = _wipRoot.Parent.Child;
+            Fiber<ViewNode>? prev = null;
+            while (cursor != null)
+            {
+                if (cursor == _renderRoot)
+                {
+                    if (prev == null)
+                    {
+                        _wipRoot.Parent.Child = _wipRoot;
+                    }
+                    else
+                    {
+                        prev.Sibling = _wipRoot;
+                    }
+                    _wipRoot.Sibling = cursor.Sibling;
+                    break;
+                }
+
+                prev = cursor;
+                cursor = cursor.Sibling;
+            }
+            throw new InvalidDataException();
+        }
+
+        // mark state
         _wipRoot = null;
         _renderRoot = null;
+        _current = null;
     }
 }

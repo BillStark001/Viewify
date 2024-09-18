@@ -41,6 +41,11 @@ public class ViewRecord
     const string STATE_SET = nameof(IState<int>.Set);
 
 
+    static bool IsValidStateDefinition(Type t)
+    {
+        return t.IsAssignableTo(typeof(IState)) && t.GetGenericTypeDefinition() == typeof(IState<>);
+    }
+
     public ViewRecord(Type viewType)
     {
         if (!viewType.IsAssignableTo(typeof(View)) && !viewType.IsAssignableTo(typeof(Dependency)))
@@ -67,7 +72,8 @@ public class ViewRecord
         DefaultStateAttribute? stateFlag1;
         DefaultStateFactoryAttribute? stateFlag2;
         ContextAttribute? contextFlag;
-        bool stateFlag0;
+
+        bool isValidDefinition;
 
         void setFlags(Attribute a)
         {
@@ -97,7 +103,7 @@ public class ViewRecord
             stateFlag1 = null;
             stateFlag2 = null;
             contextFlag = null;
-            stateFlag0 = f.FieldType.IsAssignableTo(typeof(IState));
+            isValidDefinition = IsValidStateDefinition(f.FieldType);
 
             foreach (var a in f.GetCustomAttributes())
             {
@@ -108,11 +114,9 @@ public class ViewRecord
             {
                 fProps.Add(f);
             }
-            else if (stateFlag0)
+            else if (isValidDefinition)
             {
-                var genericArgument = f.FieldType.GetInterfaces()
-                    .First(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IState<>))
-                    .GetGenericArguments()[0];
+                var genericArgument = f.FieldType.GetGenericArguments()[0];
                 fStates.Add((f, genericArgument, stateFlag1?.Value, stateFlag2?.Factory,
                     f.FieldType.GetMethod(STATE_GET, F),
                     f.FieldType.GetMethod(STATE_SET, F)));
@@ -129,7 +133,7 @@ public class ViewRecord
             stateFlag1 = null;
             stateFlag2 = null;
             contextFlag = null;
-            stateFlag0 = p.PropertyType.IsAssignableTo(typeof(IState));
+            isValidDefinition = IsValidStateDefinition(p.PropertyType);
 
             foreach (var a in p.GetCustomAttributes())
             {
@@ -140,11 +144,9 @@ public class ViewRecord
             {
                 pProps.Add(p);
             }
-            else if (stateFlag0)
+            else if (isValidDefinition)
             {
-                var genericArgument = p.PropertyType.GetInterfaces()
-                    .First(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IState<>))
-                    .GetGenericArguments()[0];
+                var genericArgument = p.PropertyType.GetGenericArguments()[0];
                 pStates.Add((p, genericArgument, stateFlag1?.Value, stateFlag2?.Factory,
                     p.PropertyType.GetMethod(STATE_GET, F),
                     p.PropertyType.GetMethod(STATE_SET, F)));

@@ -10,6 +10,11 @@ namespace Viewify.Core.Render;
 
 public class ViewNode
 {
+    public override string ToString()
+    {
+        return $"ViewNode of {View?.GetType().Name}";
+    }
+
     public View? View { get; private set; }
     public Scheduler Scheduler { get; init; }
     public ViewRecord Record { get; init; }
@@ -85,6 +90,12 @@ public class ViewNode
         }
     }
 
+    public void OnInit(Fiber<ViewNode> newFiber)
+    {
+        // TODO check rationality
+        OnMount(newFiber);
+    }
+
     public void OnMount(Fiber<ViewNode> newFiber)
     {
         // inject variables
@@ -121,6 +132,7 @@ public class ViewNode
         // also migrate information
         newFiber.Content.View = oldView;
         newFiber.Content._effectDeps = oldFiber.Content._effectDeps;
+        Record.MigrateStateFiberNodes(oldView, newFiber);
 
         // migrate & init context
         UpdateContext(newView, newFiber.Parent);
