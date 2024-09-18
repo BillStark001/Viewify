@@ -10,11 +10,13 @@ namespace Viewify.Base;
 public interface INativeHandler
 {
 
-    public void ResetCursor(NativeView v);
+    public void ResetCursor(NativeView? v);
 
     public void AscendCursor();
 
     public void DescendCursor();
+
+    public void AdvanceCursor();
 
     public object? GetPointed();
 

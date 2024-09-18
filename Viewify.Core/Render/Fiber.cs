@@ -15,6 +15,13 @@ public enum FiberTag : int
     Insert,
 }
 
+public enum FiberNextType: int
+{
+    Child,
+    Sibling,
+    Parent,
+}
+
 public class Fiber<N>(N content, object? key = default)
 {
 
@@ -56,26 +63,20 @@ public class Fiber<N>(N content, object? key = default)
         OperativeFibers = null;
     }
 
-    /// <summary>
-    /// child -> sibling -> parent
-    /// </summary>
-    /// <returns></returns>
-    public Fiber<N>? Next()
+    public Fiber<N>? Next(bool lastIsParent, out FiberNextType type)
     {
-        if (Child != null)
+        if (!lastIsParent && Child != null)
         {
+            type = FiberNextType.Child;
             return Child;
         }
-        var nextFiber = this;
-        while (nextFiber != null)
+        if (Sibling != null)
         {
-            if (nextFiber.Sibling != null)
-            {
-                return nextFiber.Sibling;
-            }
-            nextFiber = nextFiber.Parent;
+            type = FiberNextType.Sibling;
+            return Sibling;
         }
-        return null;
+        type = FiberNextType.Parent;
+        return Parent;
     }
 }
 

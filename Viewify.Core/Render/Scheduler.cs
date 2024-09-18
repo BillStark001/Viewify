@@ -168,8 +168,15 @@ public sealed class Scheduler
         var children = GetChildren(currentView);
         ReconcileChildren(current, children, currentView is Fragment f && f.UseKey);
 
-        return current.Next();
-
+        var isParent = false;
+        var ret = current.Next(isParent, out var type);
+        isParent = type == FiberNextType.Parent;
+        while (ret != null && isParent)
+        {
+            ret = current.Next(isParent, out type);
+            isParent = type == FiberNextType.Parent;
+        }
+        return ret;
     }
 
     public void ReconcileChildren(Fiber<ViewNode> v, IEnumerable<View> children, bool useKey = false)
@@ -311,11 +318,53 @@ public sealed class Scheduler
     public void CommitWipRoot()
     {
         var currentFiber = _wipRoot;
-        while (currentFiber != null)
+        var currentAlreadyVisited = false;
+
+        // calibrate the cursor
+        // find the nearest parent native view
+        // if nothing found, find the "body" container
+        NativeView? parentNativeView = null;
+        var cursorCurrentFiber = currentFiber;
+
+        while (cursorCurrentFiber != null)
         {
-            currentFiber.Content.OnVisit(currentFiber);
-            currentFiber.Detach();
-            currentFiber = currentFiber.Next();
+            if (cursorCurrentFiber.Content.View is NativeView _n)
+            {
+                parentNativeView = _n;
+                break;
+            }
+            cursorCurrentFiber = cursorCurrentFiber.Parent;
+        }
+        Handler.ResetCursor(parentNativeView);
+
+        while (currentFiber != null && currentFiber != _wipRoot?.Parent)
+        {
+            if (!currentAlreadyVisited)
+            {
+                currentFiber.Content.OnVisit(currentFiber);
+                currentFiber.Detach();
+            }
+
+            var nextFiber = currentFiber.Next(currentAlreadyVisited, out var nextType);
+            currentAlreadyVisited = nextType == FiberNextType.Parent;
+
+            if (currentFiber.Content.View is NativeView nativeView)
+            {
+                if (nextType == FiberNextType.Child)
+                {
+                    Handler.DescendCursor();
+                }
+                else if (nextType == FiberNextType.Sibling)
+                {
+                    Handler.AdvanceCursor();
+                }
+            }
+            if (nextType == FiberNextType.Parent
+                && nextFiber?.Content.View is NativeView)
+            {
+                Handler.AscendCursor();
+            }
+            currentFiber = nextFiber;
         }
 
         _wipRoot = null;
