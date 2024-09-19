@@ -123,14 +123,30 @@ public class ViewNode
 
     }
 
-    public void OnMount(Fiber<ViewNode> newFiber)
+    public void OnBeforeMount(Fiber<ViewNode>? oldFiber, Fiber<ViewNode> newFiber)
     {
-        // inject variables
+        // assume newFiber.Content == this
+        var oldView = oldFiber?.Content.View;
+        var newView = newFiber.Content.View;
+
         // state
-        Record.InitializeState(newFiber, Scheduler);
+        // oldFiber must have different type of view
+        // this makes state migration meaningless
+        // but in this point the new fiber is not committed yet
+        // so bounded states are irrational and useless
+        // these are just to assure rendering
+        Record.InitializeState(newFiber, Scheduler, true);
+
         // context
         UpdateContext(View, newFiber.Parent);
         Record.InitializeContext(View, Context);
+    }
+
+    public void OnMount(Fiber<ViewNode> newFiber)
+    {
+        // state
+        // now this is the fully functional state
+        Record.InitializeState(newFiber, Scheduler);
 
         if (View is NativeView nativeView)
         {
@@ -144,27 +160,39 @@ public class ViewNode
 
     }
 
-    public void MergePropsFrom(View? newView)
+    public void OnBeforeUpdate(Fiber<ViewNode>? oldFiber, Fiber<ViewNode> newFiber)
     {
-        Record.CompareAndMigrateProps(newView, View);
+        // assume newFiber.Content == this
+        var oldView = oldFiber?.Content.View;
+        var newView = newFiber.Content.View;
+
+        // view itself
+        newFiber.Content.View = oldView;
+        // props of view
+        Record.CompareAndMigrateProps(newView, oldView);
+        // effect deps
+        newFiber.Content._effectDeps = oldFiber?.Content._effectDeps ?? newFiber.Content._effectDeps;
+        // context of view
+        // context is essentially a sort of property
+        // this makes this update rational
+        UpdateContext(oldView, newFiber.Parent);
+        Record.InitializeContext(oldView, Context);
     }
 
     public void OnUpdate(Fiber<ViewNode> oldFiber, Fiber<ViewNode> newFiber)
     {
         // assume newFiber.Content == this
-        // assume the props are already merged
+        // assume OnBeforeUpdate already executed
+        // this is executed during the commit phase
+
         var oldView = oldFiber.Content.View;
         var newView = newFiber.Content.View;
 
-        // reuse the old view in all cases
-        // also migrate information
-        newFiber.Content.View = oldView;
-        newFiber.Content._effectDeps = oldFiber.Content._effectDeps;
+        // state
+        // this cannot be migrated before update
+        // since OnBeforeUpdate is executed before committing
+        // and the new fiber is not necessarily applied at that point
         Record.MigrateStateFiberNodes(oldView, newFiber);
-
-        // migrate & init context
-        UpdateContext(oldView, newFiber.Parent);
-        Record.InitializeContext(oldView, Context);
 
         if (newFiber.Content.View is NativeView nativeView)
         {

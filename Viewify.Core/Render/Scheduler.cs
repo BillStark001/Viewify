@@ -29,32 +29,39 @@ public sealed class Scheduler
     public Scheduler(View rootNode, INativeHandler handler)
     {
         Handler = handler;
-        _root = CreateFiber(rootNode, null, true);
+        _root = CreateFiber(rootNode);
+        _root.Content.OnBeforeMount(null, _root);
+        _root.Content.OnMount(_root);
 
         // render initial view
         _renderRoot = _root;
-        CreateWipRoot();
+        CreateWipRootIfNecessary();
     }
 
-    private Fiber<ViewNode> CreateFiber(View? view, Fiber<ViewNode>? oldFiber = null, bool isRoot = false, bool doInitStates = false)
+    private Fiber<ViewNode> CreateFiber(View? view)
     {
-        var ret = new Fiber<ViewNode>(new(view, this, _recordCache));
-        if (isRoot)
-        {
-            // the mount event is executed here
-            ret.Content.OnMount(ret);
-        }
-        else
-        {
-            // the mount event will be executed otherwise
-            // just fill all null hooks
-            ret.Content.OnInit(ret, oldFiber, doInitStates);
-        }
-        return ret;
+        return new(new(view, this, _recordCache));
     }
 
 
-    public void Tick()
+    public void Tick(int max100Nanoseconds = 80000)
+    {
+
+        // if a dispatch is scheduled, prioritize it
+
+        // unit: 1e-7s
+        var startTicks = DateTime.UtcNow.Ticks;
+        long tickSpan = 0;
+        bool hasTasks = true;
+
+        while (hasTasks && tickSpan < max100Nanoseconds)
+        {
+            hasTasks = UnitTick();
+            tickSpan = DateTime.UtcNow.Ticks - startTicks;
+        }
+    }
+
+    public bool UnitTick()
     {
         // precedence: 
         // - handle dispatch
@@ -62,22 +69,13 @@ public sealed class Scheduler
         // - create work
         // - diffing & reconciliation
 
-        // if a dispatch is scheduled, prioritize it
-
-        var dispatchHandled = false;
-        while (_dispatchQueue.TryDequeue(out var d))
+        if (_dispatchQueue.TryDequeue(out var d))
         {
             HandleDispatch(d);
-            dispatchHandled = true;
         }
-        if (dispatchHandled)
+        else if (_wipRoot == null)
         {
-            return;
-        }
-
-        if (_wipRoot == null)
-        {
-            CreateWipRoot();
+            return CreateWipRootIfNecessary();
         }
         else
         {
@@ -85,14 +83,14 @@ public sealed class Scheduler
             {
                 // diffing is complete, commit
                 CommitWipRoot();
-            } 
+            }
             else
             {
                 _current = PerformDiffWorkAndGetNext(_current);
             }
         }
 
-        // else, do nothing
+        return true;
     }
 
     public void Dispatch(Fiber<ViewNode> node, Action action)
@@ -100,22 +98,26 @@ public sealed class Scheduler
         _dispatchQueue.Enqueue((node, action));
     }
 
-    public void CreateWipRoot()
+    public bool CreateWipRootIfNecessary()
     {
         if (_renderRoot == null)
         {
-            return;
+            return false;
         }
 
         var v = _renderRoot.Content.View;
 
-        _wipRoot = CreateFiber(_renderRoot.Content.View, _renderRoot);
+        _wipRoot = CreateFiber(_renderRoot.Content.View);
         _wipRoot.Key = v?.Key;
         _wipRoot.Alternate = _renderRoot;
         _wipRoot.Parent = _renderRoot.Parent;
         _wipRoot.Tag = FiberTag.Update;
 
+        _wipRoot.Content.OnBeforeUpdate(_renderRoot, _wipRoot);
+
         _current = _wipRoot;
+
+        return true;
 
     }
 
@@ -256,12 +258,12 @@ public sealed class Scheduler
 
             if (viewHasSameType)
             {
-                newFiber = CreateFiber(logicalOldView, logicalOldFiber, doInitStates: true);
-                newFiber.Content.MergePropsFrom(newView);
+                newFiber = CreateFiber(newView);
 
                 newFiber.Parent = v;
                 newFiber.Alternate = logicalOldFiber;
                 newFiber.Tag = FiberTag.Update;
+
                 if (withKeyedOldView)
                 {
                     logicalOldFiber!.Tag = FiberTag.Insert;
@@ -272,19 +274,21 @@ public sealed class Scheduler
                     // TODO
                     // warn the user to add a key prop
                 }
+                newFiber.Content.OnBeforeUpdate(oldFiber, newFiber);
             }
             else
             {
                 // remove if exists & add
                 if (newViewExists)
                 {
-                    newFiber = CreateFiber(newView, logicalOldFiber);
+                    newFiber = CreateFiber(newView);
                     newFiber.Parent = v;
                     newFiber.Tag = FiberTag.Create;
                     if (useKey)
                     {
                         newFiber.Key = newKey;
                     }
+                    newFiber.Content.OnBeforeMount(logicalOldFiber, newFiber);
                 }
                 if (logicalOldFiber != null)
                 {

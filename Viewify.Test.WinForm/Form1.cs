@@ -13,7 +13,6 @@ public partial class Form1 : Form
 
     public Form1()
     {
-
         InitializeComponent();
     }
 
@@ -22,33 +21,29 @@ public partial class Form1 : Form
         _rootNode = new(_testValue);
         _handler = new(flowLayoutPanel1);
         _scheduler = new(_rootNode, _handler);
-        //_isRendering = true;
-        TriggerRender();
+
+        Application.Idle += Application_Idle;
+
+        _isRendering = true;
     }
 
-    private void TriggerRender()
+    private long lastTick;
+    private long minTickInterval = 100000;
+    private long maxTickExecutionTime = 80000;
+
+    private void Application_Idle(object? sender, EventArgs e)
     {
-        if (!_isRendering || _handler == null || _scheduler == null)
+        if (_isRendering && !IsDisposed && !Disposing)
         {
-            return;
+            var now = DateTime.UtcNow.Ticks;
+            if (now - lastTick >= minTickInterval)
+            {
+                _scheduler.Tick();
+                lastTick = now;
+            }
         }
-        _scheduler.Tick();
-        SetTimeout(100, TriggerRender);
     }
 
-    private System.Windows.Forms.Timer timer = new();
-    private void SetTimeout(int milliseconds, Action callback)
-    {
-        timer.Tick += (sender, e) =>
-        {
-            timer.Stop();
-            callback();
-            timer.Interval = milliseconds;
-            timer.Start();
-        };
-        timer.Interval = milliseconds;
-        timer.Start();
-    }
 
     private void button1_Click(object sender, EventArgs e)
     {
