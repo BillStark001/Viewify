@@ -10,7 +10,7 @@ using Viewify.Core.Utils;
 
 namespace Viewify.Core.Render;
 
-public class ViewRecord
+public class StatefulClassRecord
 {
 
     const BindingFlags F = BindingFlags.Public |
@@ -18,13 +18,16 @@ public class ViewRecord
                            // BindingFlags.Static |
                            // BindingFlags.FlattenHierarchy |
                            BindingFlags.Instance;
-    public Type ViewType { get; }
+    public Type ClassType { get; }
+
+    public IList<(FieldInfo, IEnumerable<(Func<object?, object?>, Action<object?, object?>)>)> DependencyFields { get; }
+    public IList<(PropertyInfo, IEnumerable<(Func<object?, object?>, Action<object?, object?>)>)> DependencyProperties { get; }
 
     public IList<FieldInfo> PropFields { get; }
     public IList<PropertyInfo> PropProperties { get; }
 
-    public IList<(FieldInfo, Type, object?, IDefaultValueFactory?, MethodInfo?, MethodInfo?)> StateFields { get; }
-    public IList<(PropertyInfo, Type, object?, IDefaultValueFactory?, MethodInfo?, MethodInfo?)> StateProperties { get; }
+    public IList<(FieldInfo, Type, object?, IDefaultValueFactory?)> StateFields { get; }
+    public IList<(PropertyInfo, Type, object?, IDefaultValueFactory?)> StateProperties { get; }
 
     public IList<(FieldInfo, string)> ContextFields { get; }
     public IList<(PropertyInfo, string)> ContextProperties { get; }
@@ -46,22 +49,26 @@ public class ViewRecord
         return t.IsAssignableTo(typeof(IState)) && t.GetGenericTypeDefinition() == typeof(IState<>);
     }
 
-    public ViewRecord(Type viewType)
+    public StatefulClassRecord(Type type)
     {
-        if (!viewType.IsAssignableTo(typeof(View)) && !viewType.IsAssignableTo(typeof(Dependency)))
+        if (!type.IsAssignableTo(typeof(IStateful)))
         {
             throw new InvalidOperationException();
         }
 
-        ViewType = viewType;
+        ClassType = type;
+
+        var fDeps = new List<(FieldInfo, IEnumerable<(Func<object?, object?>, Action<object?, object?>)>)>();
+
+        var pDeps = new List<(PropertyInfo, IEnumerable<(Func<object?, object?>, Action<object?, object?>)>)>();
 
         var fProps = new List<FieldInfo>();
 
         var pProps = new List<PropertyInfo>();
 
-        var fStates = new List<(FieldInfo, Type, object?, IDefaultValueFactory?, MethodInfo?, MethodInfo?)>();
+        var fStates = new List<(FieldInfo, Type, object?, IDefaultValueFactory?)>();
 
-        var pStates = new List<(PropertyInfo, Type, object?, IDefaultValueFactory?, MethodInfo?, MethodInfo?)>();
+        var pStates = new List<(PropertyInfo, Type, object?, IDefaultValueFactory?)>();
 
         var fContexts = new List<(FieldInfo, string)>();
 
@@ -71,10 +78,12 @@ public class ViewRecord
         PropAttribute? propFlag;
         StateAttribute? stateFlag1;
         ContextAttribute? contextFlag;
+        List<(Func<object?, object?>, Action<object?, object?>)> injectMethods = new();
 
-        bool isValidDefinition;
+        bool isValidState;
+        bool isDependency;
 
-        void setFlags(Attribute a)
+        void setFlags(Attribute a, Type? t)
         {
             if (a is PropAttribute ap)
             {
@@ -88,63 +97,82 @@ public class ViewRecord
             {
                 contextFlag = ac;
             }
+            if (a is InjectAttribute ai)
+            {
+                var _f = ai.Source != null ? ClassType.GetField(ai.Source) : null;
+                var _ft = t?.GetField(ai.Prop);
+                Func<object?, object?>? getter = _f != null ? _f.GetValue : null;
+                Action<object?, object?>? setter = _ft != null ? _ft.SetValue : null;
+                if (setter != null && getter != null)
+                {
+                    injectMethods.Add((getter, setter));
+                }
+            }
         }
 
-        foreach (var f in ViewType.GetFields(F))
+        foreach (var f in ClassType.GetFields(F))
         {
             propFlag = null;
             stateFlag1 = null;
             contextFlag = null;
-            isValidDefinition = IsValidStateDefinition(f.FieldType);
+            injectMethods.Clear();
+            isValidState = IsValidStateDefinition(f.FieldType);
+            isDependency = f.FieldType.IsAssignableTo(typeof(IDependency));
 
             foreach (var a in f.GetCustomAttributes())
             {
-                setFlags(a);
+                setFlags(a, f.FieldType);
             }
 
             if (propFlag != null)
             {
                 fProps.Add(f);
             }
-            else if (isValidDefinition)
+            else if (isValidState)
             {
                 var genericArgument = f.FieldType.GetGenericArguments()[0];
-                fStates.Add((f, genericArgument, stateFlag1?.Default, stateFlag1?.Factory,
-                    f.FieldType.GetMethod(STATE_GET, F),
-                    f.FieldType.GetMethod(STATE_SET, F)));
+                fStates.Add((f, genericArgument, stateFlag1?.Default, stateFlag1?.Factory));
             }
             else if (contextFlag != null)
             {
                 fContexts.Add((f, f.FieldType.GetUniqueName()));
             }
+            else if (isDependency)
+            {
+                fDeps.Add((f, injectMethods.ToImmutableList()));
+            }
         }
 
-        foreach (var p in ViewType.GetProperties(F))
+        foreach (var p in ClassType.GetProperties(F))
         {
             propFlag = null;
             stateFlag1 = null;
             contextFlag = null;
-            isValidDefinition = IsValidStateDefinition(p.PropertyType);
+            injectMethods.Clear();
+            isValidState = IsValidStateDefinition(p.PropertyType);
+            isDependency = p.PropertyType.IsAssignableTo(typeof(IDependency));
 
             foreach (var a in p.GetCustomAttributes())
             {
-                setFlags(a);
+                setFlags(a, p.PropertyType);
             }
 
             if (propFlag != null)
             {
                 pProps.Add(p);
             }
-            else if (isValidDefinition)
+            else if (isValidState)
             {
                 var genericArgument = p.PropertyType.GetGenericArguments()[0];
-                pStates.Add((p, genericArgument, stateFlag1?.Default, stateFlag1?.Factory,
-                    p.PropertyType.GetMethod(STATE_GET, F),
-                    p.PropertyType.GetMethod(STATE_SET, F)));
+                pStates.Add((p, genericArgument, stateFlag1?.Default, stateFlag1?.Factory));
             }
             else if (contextFlag != null)
             {
                 pContexts.Add((p, p.PropertyType.GetUniqueName()));
+            }
+            else if (isDependency)
+            {
+                pDeps.Add((p, injectMethods.ToImmutableList()));
             }
         }
 
@@ -154,6 +182,8 @@ public class ViewRecord
         StateProperties = pStates.AsReadOnly();
         ContextFields = fContexts.AsReadOnly();
         ContextProperties = pContexts.AsReadOnly();
+        DependencyFields = fDeps.AsReadOnly();
+        DependencyProperties = pDeps.AsReadOnly();
 
         // effects
 
@@ -161,7 +191,7 @@ public class ViewRecord
         var unmountEffects = new List<MethodInfo>();
         var effects = new Dictionary<string, List<MethodInfo>>();
 
-        foreach (var p in ViewType.GetMethods(F))
+        foreach (var p in ClassType.GetMethods(F))
         {
             var effectAttrs = p.GetCustomAttributes<EffectAttribute>();
             List<string> deps = [];
@@ -216,8 +246,8 @@ public class ViewRecord
 
         foreach (var k in Effects.Keys)
         {
-            var f = viewType.GetField(k, F);
-            var p = viewType.GetProperty(k, F);
+            var f = type.GetField(k, F);
+            var p = type.GetProperty(k, F);
 
             if (f != null)
             {

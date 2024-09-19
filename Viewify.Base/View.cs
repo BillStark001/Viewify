@@ -8,7 +8,7 @@ namespace Viewify.Base;
 
 
 
-public abstract class View
+public abstract class View : IStateful
 {
     // needed to be overloaded
     public abstract View? Render();

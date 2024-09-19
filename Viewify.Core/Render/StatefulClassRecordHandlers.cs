@@ -9,11 +9,11 @@ using Viewify.Core.Utils;
 
 namespace Viewify.Core.Render;
 
-public static class ViewRecordHandlers
+public static class StatefulClassRecordHandlers
 {
     // states
     public static void InitializeState(
-        this ViewRecord record,
+        this StatefulClassRecord record,
         Fiber<ViewNode> node,
         Scheduler scheduler,
         bool temporary = false
@@ -21,16 +21,16 @@ public static class ViewRecordHandlers
     {
         var instance = node.Content.View;
 
-        foreach (var (field, type, defaultValue, factory, _, _) in record.StateFields)
+        foreach (var (field, type, defaultValue, factory) in record.StateFields)
         {
             var iv = factory?.Create() ?? defaultValue!;
-            IState s = temporary 
+            IState s = temporary
                 ? ImmutableState<int>.Create(type, iv)
                 : StateWithDispatch.Create(type, scheduler, node, iv);
             field.SetValue(instance, s);
         }
 
-        foreach (var (property, type, defaultValue, factory, _, _) in record.StateProperties)
+        foreach (var (property, type, defaultValue, factory) in record.StateProperties)
         {
             var iv = factory?.Create() ?? defaultValue!;
             IState s = temporary
@@ -40,9 +40,9 @@ public static class ViewRecordHandlers
         }
     }
 
-    public static void MigrateStateFiberNodes(this ViewRecord record, View? view, Fiber<ViewNode> fiber)
+    public static void MigrateStateFiberNodes(this StatefulClassRecord record, IStateful? view, Fiber<ViewNode> fiber)
     {
-        foreach (var (field, _, _, _, _, _) in record.StateFields)
+        foreach (var (field, _, _, _) in record.StateFields)
         {
             var state = field.GetValue(view) as StateWithDispatch;
             if (state != null)
@@ -51,7 +51,7 @@ public static class ViewRecordHandlers
             }
         }
 
-        foreach (var (property, _, _, _, _, _) in record.StateProperties)
+        foreach (var (property, _, _, _) in record.StateProperties)
         {
             var state = property.GetValue(view) as StateWithDispatch;
             if (state != null)
@@ -61,9 +61,9 @@ public static class ViewRecordHandlers
         }
     }
 
-    public static void MigrateStates(this ViewRecord record, View? source, View? destination)
+    public static void MigrateStates(this StatefulClassRecord record, IStateful? source, IStateful? destination)
     {
-        foreach (var (field, _, _, _, g1, s1) in record.StateFields)
+        foreach (var (field, _, _, _) in record.StateFields)
         {
             if (field.GetValue(source) is IState sourceState)
             {
@@ -71,7 +71,7 @@ public static class ViewRecordHandlers
             }
         }
 
-        foreach (var (property, _, _, _, g1, s1) in record.StateProperties)
+        foreach (var (property, _, _, _) in record.StateProperties)
         {
             if (property.GetValue(source) is IState sourceState)
             {
@@ -81,7 +81,7 @@ public static class ViewRecordHandlers
     }
 
     // props
-    public static bool CompareAndMigrateProps(this ViewRecord record, View? source, View? destination)
+    public static bool CompareAndMigrateProps(this StatefulClassRecord record, IStateful? source, IStateful? destination)
     {
         bool hasChange = false;
 
@@ -113,7 +113,7 @@ public static class ViewRecordHandlers
     }
 
     // effect
-    public static bool CompareAndCalculateEffectDependencies(this ViewRecord record, View? source, object?[] destination, bool[] changed)
+    public static bool CompareAndCalculateEffectDependencies(this StatefulClassRecord record, IStateful? source, object?[] destination, bool[] changed)
     {
         bool hasChange = false;
         int i = 0;
@@ -157,14 +157,14 @@ public static class ViewRecordHandlers
         return hasChange;
     }
 
-    public static void ExecuteMountEffects(this ViewRecord record, View? view)
+    public static void ExecuteMountEffects(this StatefulClassRecord record, IStateful? view)
     {
         foreach (var item in record.MountEffects)
         {
             item.Invoke(view, null);
         }
     }
-    public static void ExecuteUnmountEffects(this ViewRecord record, View? view)
+    public static void ExecuteUnmountEffects(this StatefulClassRecord record, IStateful? view)
     {
         foreach (var item in record.UnmountEffects)
         {
@@ -172,7 +172,7 @@ public static class ViewRecordHandlers
         }
     }
 
-    public static void ExecuteEffects(this ViewRecord record, View? view, bool[] changed)
+    public static void ExecuteEffects(this StatefulClassRecord record, IStateful? view, bool[] changed)
     {
         int i = 0;
 
@@ -202,7 +202,7 @@ public static class ViewRecordHandlers
     }
 
     // context
-    public static void InitializeContext(this ViewRecord record, View? view, ImmutableTreeHashTable<object> context)
+    public static void InitializeContext(this StatefulClassRecord record, IStateful? view, ImmutableTreeHashTable<object> context)
     {
         foreach (var (field, key) in record.ContextFields)
         {
@@ -221,8 +221,40 @@ public static class ViewRecordHandlers
             }
         }
     }
-    // TODO
 
-    // custom hooks
+    // dependencies
+
+    static void InjectDependency(
+        this StatefulClassRecord record,
+        IStateful? view,
+        IStateful? dependency,
+        IEnumerable<(
+            Func<object?, object?>,
+            Action<object?, object?>
+            )> methods
+        )
+    {
+        if (view == null || dependency == null)
+        {
+            return;
+        }
+        foreach (var (get, set) in methods)
+        {
+            set(dependency, get(view));
+        }
+    }
+
+    public static void InjectDependencies(this StatefulClassRecord record, IStateful? view)
+    {
+        foreach (var (f, methods) in record.DependencyFields)
+        {
+            record.InjectDependency(view, f.GetValue(view) as IStateful, methods);
+        }
+        foreach (var (p, methods) in record.DependencyProperties)
+        {
+            record.InjectDependency(view, p.GetValue(view) as IStateful, methods);
+        }
+    }
+
     //TODO
 }

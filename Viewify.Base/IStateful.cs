@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace Viewify.Base;
 
-public abstract class Dependency
+public interface IStateful
 {
-    public abstract void Derive();
+    // the basic interface of View and IDependency
 }

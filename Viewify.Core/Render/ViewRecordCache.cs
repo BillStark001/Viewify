@@ -9,15 +9,15 @@ namespace Viewify.Core.Render;
 
 public class ViewRecordCache
 {
-    private static ViewRecord GenerateCache(Type t)
+    private static StatefulClassRecord GenerateCache(Type t)
     {
-        return new ViewRecord(t);
+        return new StatefulClassRecord(t);
     }
 
-    private readonly AdaptiveLRUCache<Type, ViewRecord> _cache = new(32, GenerateCache);
+    private readonly AdaptiveLRUCache<Type, StatefulClassRecord> _cache = new(32, GenerateCache);
 
 
-    public ViewRecord Get(Type t)
+    public StatefulClassRecord Get(Type t)
     {
         return _cache.Get(t);
     }

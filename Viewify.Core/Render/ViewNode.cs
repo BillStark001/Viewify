@@ -17,7 +17,7 @@ public class ViewNode
 
     public View? View { get; private set; }
     public Scheduler Scheduler { get; init; }
-    public ViewRecord Record { get; init; }
+    public StatefulClassRecord Record { get; init; }
 
     public ImmutableTreeHashTable<object> Context { get; private set; } = _defaultContext;
 
