@@ -69,8 +69,7 @@ public class ViewRecord
 
 
         PropAttribute? propFlag;
-        DefaultStateAttribute? stateFlag1;
-        DefaultStateFactoryAttribute? stateFlag2;
+        StateAttribute? stateFlag1;
         ContextAttribute? contextFlag;
 
         bool isValidDefinition;
@@ -81,15 +80,9 @@ public class ViewRecord
             {
                 propFlag = ap;
             }
-            if (a is DefaultStateAttribute ads)
+            if (a is StateAttribute ads)
             {
                 stateFlag1 = ads;
-                stateFlag2 = null;
-            }
-            if (a is DefaultStateFactoryAttribute ads2)
-            {
-                stateFlag1 = null;
-                stateFlag2 = ads2;
             }
             if (a is ContextAttribute ac)
             {
@@ -101,7 +94,6 @@ public class ViewRecord
         {
             propFlag = null;
             stateFlag1 = null;
-            stateFlag2 = null;
             contextFlag = null;
             isValidDefinition = IsValidStateDefinition(f.FieldType);
 
@@ -117,7 +109,7 @@ public class ViewRecord
             else if (isValidDefinition)
             {
                 var genericArgument = f.FieldType.GetGenericArguments()[0];
-                fStates.Add((f, genericArgument, stateFlag1?.Value, stateFlag2?.Factory,
+                fStates.Add((f, genericArgument, stateFlag1?.Default, stateFlag1?.Factory,
                     f.FieldType.GetMethod(STATE_GET, F),
                     f.FieldType.GetMethod(STATE_SET, F)));
             }
@@ -131,7 +123,6 @@ public class ViewRecord
         {
             propFlag = null;
             stateFlag1 = null;
-            stateFlag2 = null;
             contextFlag = null;
             isValidDefinition = IsValidStateDefinition(p.PropertyType);
 
@@ -147,7 +138,7 @@ public class ViewRecord
             else if (isValidDefinition)
             {
                 var genericArgument = p.PropertyType.GetGenericArguments()[0];
-                pStates.Add((p, genericArgument, stateFlag1?.Value, stateFlag2?.Factory,
+                pStates.Add((p, genericArgument, stateFlag1?.Default, stateFlag1?.Factory,
                     p.PropertyType.GetMethod(STATE_GET, F),
                     p.PropertyType.GetMethod(STATE_SET, F)));
             }
